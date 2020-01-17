@@ -429,7 +429,7 @@ void WKE_CALL_TYPE CMbUiDlg::DocumentReadyCallback(wkeWebView webView, void* par
 	}
 	jsValue vs[2];
 	vs[0] = jsInt(123);
-	vs[1] = jsStringW(es, L"法克油W");
+	vs[1] = jsStringW(es, L"法克油");
 	jsCallGlobal(es, f, vs, 2);
 #endif
 	if (!g_dlg->m_hGameModule) {
@@ -455,6 +455,8 @@ jsValue JS_CALL CMbUiDlg::js_Func(jsExecState es)
 
 	const utf8* func_name = jsToString(es, jsArg(es, 0));
 	printf("%s\n", jsToString(es, jsArg(es, 0)));
+	if (strcmp("set_title", func_name) == 0)
+		return g_dlg->SetTitle(es);
 	if (strcmp("open_menu", func_name) == 0)
 		return g_dlg->OpenMenu(es);
 	if (strcmp("start", func_name) == 0)
@@ -469,10 +471,19 @@ jsValue JS_CALL CMbUiDlg::js_Func(jsExecState es)
 		return g_dlg->PutSetting(es);
 	if (strcmp("verify_card", func_name) == 0)
 		return g_dlg->VerifyCard(es);
+	if (strcmp("fb_record", func_name) == 0)
+		return g_dlg->FBRecord(es);
 
 	CString str;
 	str.Format(L"参数数量:%d", jsArgCount(es));
 	return jsStringW(es, str);
+}
+
+// 设置程序标题
+jsValue CMbUiDlg::SetTitle(jsExecState es)
+{
+	SetWindowText(jsToStringW(es, jsArg(es, 1)));
+	return jsInt(0);
 }
 
 // 打开帐号菜单 返回是否登录
@@ -526,6 +537,29 @@ jsValue CMbUiDlg::VerifyCard(jsExecState es)
 {
 	typedef int(*WINAPI Func_Game_VerifyCard)(const wchar_t*);
 	return jsInt((GetGameProc(Func_Game_VerifyCard, "Game_VerifyCard"))(jsToStringW(es, jsArg(es, 1))));
+}
+
+// 查询副本记录
+jsValue CMbUiDlg::FBRecord(jsExecState es)
+{
+	typedef int(*WINAPI Func_Game_SelectFBRecord)(char***, int*);
+	int col = 0;
+	char** result = nullptr;
+	int row = (GetGameProc(Func_Game_SelectFBRecord, "Game_SelectFBRecord"))(&result, &col);
+
+	jsValue v = jsEmptyArray(es);
+	for (int i = 1; i <= row; i++) {
+		int index = i * col;
+
+		jsValue object = jsEmptyObject(es);
+		jsSet(es, object, "id", jsInt(atoi(result[index])));
+		jsSet(es, object, "start_time", jsInt(atoi(result[index + 1])));
+		jsSet(es, object, "end_time", jsInt(atoi(result[index + 2])));
+		jsSet(es, object, "time_long", jsInt(atoi(result[index + 3])));
+		jsSet(es, object, "status", jsInt(atoi(result[index + 4])));
+		jsSetAt(es, v, i - 1, object);
+	}
+	return v;
 }
 
 // 线程

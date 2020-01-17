@@ -16,6 +16,45 @@
     <div id="full" style="display:none;position:absolute; background:#000000; z-index:998;width:100%;opacity:0.5;filter: alpha(opacity=50);"></div>
     <div id="tips_box" class="tips_box"></div>
     <div style="width:500px;margin:0 auto;">
+        <div id="more_data" class="more_data" style="display:none;position:absolute;z-index:999;">
+            <div class="layui-tab layui-tab-card" style="background:#ffffff;">
+                <div style="position:absolute;margin:10px 490px;z-index:999;">
+                    <a href="javascript:HideMoreData();" class="close"><i class="layui-icon">&#x1006;</i></a>
+                </div>
+                <ul class="layui-tab-title">
+                    <li class="layui-this">每日统计</li>
+                </ul>
+                <div class="layui-tab-content scrool_y" style="width:500px;height:450px;">
+                    <div class="layui-tab-item layui-show">
+                        <div id="date_num">
+                            <!--
+                            <div class="num"><span class="d">2020-01-01</span>通关次数: 3 <a href="javascript:ShowDataDetail(1);">详细</a></div>
+                            <div class="num"><span class="d">2020-01-01</span>通关次数: 3 <a href="javascript:ShowDataDetail(1);">详细</a></div>
+                            <div class="num"><span class="d">2020-01-01</span>通关次数: 3 <a href="javascript:ShowDataDetail(1);">详细</a></div>
+                            -->
+                        </div>
+                        <div id="date_detail" style="display:none;">
+                            <div>
+                                <a href="javascript:ShowDataDetail(0)" class="blue">返回</a>
+                                <span class="c0 b date">--</span>
+                                <span class="c6 fast">--</span>
+                                <span class="c9 slow">--</span>
+                                <span class="c0 avg">--</span>
+                            </div>
+                            <div id="date_detail_list" class="mt10">
+                                <!--
+                                <div class="detail">19时03分05秒 至 20时13分10秒 <span class="c0">用时:--</span></div>
+                                <div class="detail">19时03分05秒 至 20时13分10秒 <span class="c0">用时:--</span></div>
+                                <div class="detail">19时03分05秒 至 20时13分10秒 <span class="c0">用时:--</span></div>
+                                -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div style="width:500px;margin:0 auto;">
         <div id="card_setting" class="setting_div" style="display:none;">
             <ul class="setting_ul" style="min-height:130px;">
                 <li class="title">
@@ -201,7 +240,6 @@
         </fieldset>
         <ul id="log_ul" class="log_ul scrool_y"></ul>
     </div>
-
     <main>
         <div class="recharge">
             <span class="ml5">
@@ -214,6 +252,7 @@
             <span id="card_date" class="ml5 c9">未激活</span>
         </div>
         <div class="recharge mt10">
+            <a href="javascript:MoreData(500);" class="blue fz12" style="color:blue;">详细数据</a>
             <!--启动时长:  <span id="start_time" class="c0">0小时00分00秒</span>，-->
             本次时长:  <span id="fb_time_long" class="c0">0小时00分00秒</span>，
             累计时长:  <span id="fb_time_long_all" class="c0">0小时00分00秒</span>
@@ -261,7 +300,7 @@
             <legend class="fz14"><i class="layui-icon">&#xe620;</i> 设置</legend>
             <div class="setting" id="setting_btn">
                 <a href="javascript:;" onclick="ShowSetting('basic_setting', 300);">基本设置</a> |
-                <a href="javascript:;" onclick="ShowSetting('talk_setting', 300);">喊话设置</a> |
+                <!--<a href="javascript:;" onclick="ShowSetting('talk_setting', 300);">喊话设置</a> |-->
                 <a href="javascript:;" id="update_btn" class="update_btn" onclick="UpdateVer(this)">
                     检查更新<i class="layui-icon">&#xe607;</i>
                 </a>
@@ -329,16 +368,16 @@
             0xFF5A8B18, 0xFF5C8D1A, 0xFF538A0B, 0xFF6DA425, 0xFF79C211, 0xFF7CC514, 0xFF88D611, 0xFF98E621, 0xFF9AD32C, 0xFF82BB14
         ];
         var colors2 = [
-            0xFF9053B0, 0xFFCA8DEA, 0xFFC187DB, 0xFF8B51A5, 0xFFB885CA, 0xFFBE8BD0, 0xFFAE7EB8, 0xFF94649E, 0xFF7C4D83, 0xFF805187,
-            0xFF763599, 0xFFB271D5, 0xFFBF83DB, 0xFF9C60B8, 0xFF7E4893, 0xFFB983CE, 0xFFC090CE, 0xFFA575B3, 0xFF8B5B95, 0xFF895993,
-            0xFFB776DA, 0xFFD190F4, 0xFFC387DF, 0xFFC68AE2, 0xFF5F2974, 0xFFCC96E1, 0xFFBE8ECC, 0xFF9B6BA9, 0xFF9767A1, 0xFF8D5D97,
-            0xFFCE8BF2, 0xFFDF9CFF, 0xFFDFA2FF, 0xFFDEA1FE, 0xFF652F7B, 0xFFC08AD6, 0xFFBA89CA, 0xFFA776B7, 0xFF9868A4, 0xFF83538F,
-            0xFFE5A2FF, 0xFFC784EB, 0xFFC78AE7, 0xFFB174D1, 0xFF87519D, 0xFFC690DC, 0xFFC695D6, 0xFF9D6CAD, 0xFF9868A4, 0xFF7A4A86,
-            0xFFC996E1, 0xFFA875C0, 0xFFAE7DBE, 0xFFA473B4, 0xFFAF7EB5, 0xFFA574AB, 0xFFE7B6EE, 0xFFE4B3EB, 0xFFCC9EDF, 0xFFC496D7,
-            0xFFAF7CC7, 0xFFA976C1, 0xFFB07FC0, 0xFFAD7CBD, 0xFFF5C4FB, 0xFFB685BC, 0xFFBC8BC3, 0xFFDDACE4, 0xFFE4B6F7, 0xFFE2B4F5,
-            0xFFE6BFF6, 0xFFB790C7, 0xFFAD85BA, 0xFFBB93C8, 0xFFF7CCFF, 0xFFC89DD3, 0xFFA476B4, 0xFFAE80BE, 0xFFCFA1E9, 0xFFCD9FE7,
-            0xFFFFDDFF, 0xFFFFDDFF, 0xFFD5ADE2, 0xFFA47CB1, 0xFFB186BC, 0xFFDCB1E7, 0xFFB789C7, 0xFF9D6FAD, 0xFFD6A8F0, 0xFFCA9CE4,
-            0xFFEBD4F0, 0xFFFFECFF, 0xFFFFE7FF, 0xFFFFEEFF, 0xFFFFEEFF, 0xFFAC89BF, 0xFF6F468C, 0xFFB289CF, 0xFFBB8FDC, 0xFFB286D3,
+            0xFFD871BA, 0xFFC431B5, 0xFFC431B5, 0xFFDB24A0, 0xFFFA43BF, 0xFFFF7679, 0xFFFF8285, 0xFFD72BF1, 0xFFBA0ED4, 0xFFB722D3,
+            0xFFD46DB6, 0xFFD946CA, 0xFFC734B8, 0xFFCA138F, 0xFFFF5FDB, 0xFFFF7A7D, 0xFFF66A6D, 0xFFE337FD, 0xFFC115DB, 0xFFA813C4,
+            0xFFD265B4, 0xFFE65EB2, 0xFFCB4397, 0xFFF253B0, 0xFFFF6BC8, 0xFFFF5BC7, 0xFFFF59C5, 0xFFC41B98, 0xFFD42BA8, 0xFFA60795,
+            0xFFE376C5, 0xFFEA62B6, 0xFFE25AAE, 0xFFFF60BD, 0xFFFA5BB8, 0xFFFF54C0, 0xFFFF55C1, 0xFFC41B98, 0xFFCF26A3, 0xFFA90A98,
+            0xFFFA8ADE, 0xFFE361B9, 0xFFE664BC, 0xFFFF6FD0, 0xFFE851B2, 0xFFF652C3, 0xFFFD59CA, 0xFFCB24A8, 0xFFCB24A8, 0xFFAF0BA0,
+            0xFFFF9DF1, 0xFFE866BE, 0xFFE05EB6, 0xFFFF7DDE, 0xFFEB54B5, 0xFFF955C6, 0xFFFF64D5, 0xFFE33CC0, 0xFFD730B4, 0xFFB915AA,
+            0xFFFFA4F7, 0xFFF47ED4, 0xFFDB65BB, 0xFFFF89E7, 0xFFE15EBC, 0xFFE555C4, 0xFFFB6BDA, 0xFFEF53D8, 0xFFDD41C6, 0xFFCD25C0,
+            0xFFFF96E9, 0xFFFF8EE4, 0xFFEA74CA, 0xFFFF7DDB, 0xFFE05DBB, 0xFFD545B4, 0xFFEA5AC9, 0xFFED51D6, 0xFFE145CA, 0xFFDC34CF,
+            0xFFF490D9, 0xFFF795E0, 0xFFEF8DD8, 0xFFDD74C8, 0xFFDF76CA, 0xFFC952B6, 0xFFD25BBF, 0xFFDF55CF, 0xFFDA50CA, 0xFFE84CDD,
+            0xFFF894DD, 0xFFF391DC, 0xFFFD9BE6, 0xFFD56CC0, 0xFFFC93E7, 0xFFDF68CC, 0xFFDD66CA, 0xFFE75DD7, 0xFFE55BD5, 0xFFFD61F2,
         ]
 
         for (var y = 0; y < 10; y++) {
@@ -346,11 +385,12 @@
             for (var x = 0; x < 10; x++) {
                 var color = (colors2[y * 10 + x] & 0x00ffffff).toString(16).toUpperCase();
                 //color = 'FF5050';
-                html += "<span style='color:#" + color + "'>0x" + color +"</span> ";
+                html += "<span style='color:#" + color + "'>0xFF" + color +"</span> ";
             }
             html += "</div>";
             //$('#xxx').append(html);
         }
+        CallCpp("set_title", "MbUi");
     </script>
 </body>
 </html>

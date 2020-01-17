@@ -103,6 +103,8 @@ public:
 
 	// js调用函数
 	static jsValue JS_CALL js_Func(jsExecState es);
+	// 设置程序标题
+	jsValue SetTitle(jsExecState es);
 	// 打开帐号菜单 返回是否登录
 	jsValue OpenMenu(jsExecState es);
 	// 安装dll驱动
@@ -117,6 +119,8 @@ public:
 	jsValue PutSetting(jsExecState es);
 	// 验证卡号
 	jsValue VerifyCard(jsExecState es);
+	// 查询副本记录
+	jsValue FBRecord(jsExecState es);
 	// 线程
 	static DWORD WINAPI Thread(LPVOID param);
 public:

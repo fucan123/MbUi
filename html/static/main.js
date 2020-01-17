@@ -44,7 +44,7 @@ function fff() {
         bl = bl.toFixed(2);
         var msg = "页面可能未显示完全(当前页面高度" + b_height + ", 可视区域高度" + client_height+", 不可见比例"+bl+"%),";
         msg += "当前缩放比列(" + zoom + "%), 请尝试按(Ctrl+鼠标滚轮)缩放页面.";
-        alert(msg);
+        //alert(msg);
     }
     $("body").on("mousedown", function (event) {
         event = event || window.event;
@@ -55,6 +55,13 @@ function fff() {
                 if (typeof event.preventDefault !== 'undefine')
                     event.preventDefault();
             }
+        }
+    });
+
+    $("#full").click(function () {
+        if (!$("#more_data").is(":hidden")) {
+            $("#more_data").hide();
+            $("#full").hide();
         }
     });
 
@@ -567,11 +574,176 @@ function AddZero(v) {
     return v;
 }
 
-// 设置c++类对象
-function SetCppObj(obj) {
-    cpp_obj = obj;
-    _c = cpp_obj;
-    fff();
+var fb_records = [];
+// 详细数据
+function MoreData(h) {
+    //alert((new Date('2020-1-13').getTime() / 1000) + " " + (new Date().getTime() / 1000));
+  //  alert(getTodayTime());
+    //alert(getTodayTime() + 86400);
+    $("#full").show();
+    $("#more_data").css("margin-top", ((client_height - h) / 2 - 50) + "px");
+    $("#more_data").show();
+
+    fb_records = CallCpp("fb_record");
+    ShowMoreDataNum();
+}
+
+function ShowMoreDataNum() {
+    var index = 0, length = fb_records.length;
+    var text = '';
+    for (var day = 0, key = 1; day > -90; day-- , key++) {
+        var s_time = getDayTime(day);
+        var e_time = s_time + 86400;
+        //if (fb_records[0].start_time > e_time)
+        //    break;
+
+        var num = 0, num_reborn = 0, num_out = 0;
+        for (; index < length;) {
+            var data = fb_records[index];
+            if (data.start_time < s_time)
+                break;
+
+            if (data.start_time >= s_time && data.start_time < e_time) {
+                if (data.status === 0)
+                    num++;
+                if (data.status === 1)
+                    num_reborn++;
+                if (data.status === 2)
+                    num_out++;
+            }
+
+            index++;
+        }
+        if (1 || num || num_reborn || num_out) {
+            text += '<div class="num">';
+            text += '<span class="d" >' + timestampToTime(s_time, true) + '</span>';
+            text += '<span class="ml10 c3">通关次数:(' + num + ')</span>';
+            if (num_reborn)
+                text += '<span class="ml10 orange">复活重开:(' + num_reborn + ')</span>';
+            if (num_out)
+                text += '<span class="ml10 red">超时重开:(' + num_out + ')</span>';
+            text += '<a href="javascript:ShowDataDetail(1, ' +s_time+');" class="ml5">详细</a></div> ';
+        }
+    }
+    $('#date_num').html(text);
+    ShowDataDetail(0);
+}
+
+function HideMoreData() {
+    $("#full").hide();
+    $("#more_data").hide();
+}
+
+function ShowDataDetail(v, s_time) {
+    if (v) {
+        $("#date_num").hide();
+        $("#date_detail").show();
+
+        var text = '', fast = 0, slow = 0, avg = 0;
+        var e_time = s_time + 86400;
+        var key = 1, out_num = 0;
+        for (var i in fb_records) {
+            if (fb_records[i].start_time < s_time)
+                break;
+
+            if (fb_records[i].start_time >= s_time && fb_records[i].start_time < e_time) {
+                text += '<div class="detail">';
+                text += '<span class="c0" style="display:inline-block;width:30px;">' + key+ '.</span>';
+                text += '<span class="c3">'+format_fb_time(fb_records[i].start_time)+'</span>';
+                text += ' 至 ';
+                text += '<span class="c3">' + format_fb_time(fb_records[i].end_time) + '</span>';
+                text += '<span class="ml10 c3 b">用时:' + FormatTimeLong(fb_records[i].time_long) + '</span>';
+
+                if (fb_records[i].status === 1)
+                    text += '<span class="ml5 orange b">(复活重开)</span>';
+                else if (fb_records[i].status === 2)
+                    text += '<span class="ml5 red b">(超时重开)</span>';
+
+                text += '</div>';
+
+                if (fb_records[i].status === 0) {
+                    if (fast === 0) {
+                        fast = fb_records[i].time_long;
+                    }
+                    else if (fb_records[i].time_long < fast) {
+                        fast = fb_records[i].time_long;
+                    }
+                    if (slow < fb_records[i].time_long)
+                        slow = fb_records[i].time_long;
+
+                    avg += fb_records[i].time_long;
+                }
+                else {
+                    out_num++;
+                }
+
+                key++;
+            }
+        }
+
+        if (key > 1)
+            avg /= (key - 1 - out_num);
+
+        $('#date_detail .date').html(timestampToTime(s_time, true));
+        $('#date_detail .fast').html('最快:'+FormatTimeLong(fast));
+        $('#date_detail .slow').html('最慢:' +FormatTimeLong(slow));
+        $('#date_detail .avg').html('平均:' +FormatTimeLong(parseInt(avg)));
+
+        if (text === '') text = '<div>无数据</div>';
+        $('#date_detail_list').html(text);
+    }
+    else {
+        $("#date_detail").hide();
+        $("#date_num").show();
+    }
+}
+
+function getDayTime(day) {
+    var d = new Date();
+    var Y = d.getFullYear() + '-';
+    var M = (d.getMonth() + 1) + '-';
+    var D = d.getDate();
+    d.setDate(D + day);
+    d.setHours(0);
+    d.setMinutes(0);
+    d.setSeconds(0);
+    return parseInt(new Date(d).getTime() / 1000);
+}
+
+function format_fb_time(timestamp) {
+    var date = new Date(timestamp * 1000);
+    var h = date.getHours() + '时';
+    var m = AddZero(date.getMinutes())+'分';
+    var s = AddZero(date.getSeconds())+'秒';
+    return  h + m + s;
+}
+
+// 时长转成文字
+function FormatTimeLong(time_long) {
+    var text = '';
+
+    text += AddZero(parseInt((time_long % 3600) / 60)) + '分';
+    text += AddZero(parseInt(time_long % 60)) + '秒';
+    return text;
+}
+
+function timestampToTime(timestamp, only_date, only_time) {
+    var Y = '', M = '', D = '';
+    var date = new Date(timestamp * 1000);//时间戳为10位需*1000，时间戳为13位的话不需乘1000
+    if (!only_time) {
+        var Y = date.getFullYear() + '-';
+        var M = AddZero(date.getMonth() + 1) + '-';
+        var D = AddZero(date.getDate());
+    }
+   
+    if (only_date)
+        return Y + M + D;
+    else
+        D += ' ';
+    var h = date.getHours() + ':';
+    var m = AddZero(date.getMinutes());
+    var s = AddZero(date.getSeconds());
+    return Y + M + D + h + m + s;
 }
 
 function Start() {
@@ -596,17 +768,26 @@ function Start() {
 }
 
 function AutoPlay() {
-    if (!Start())
-        return;
-
     var index;
     if ($('#auto_play_btn').html() == '自动登号') {
+        if (!g_install_dll && !Start())
+            return;
+
         $('#auto_play_btn').html('停止登号');
         index = -1;
     }
     else {
+        if (g_install_dll) Start();
+
         $('#auto_play_btn').html('自动登号');
         index = -2;
     }
     CallCpp("open_game", index, 0);
+}
+
+// 设置c++类对象
+function SetCppObj(obj) {
+    cpp_obj = obj;
+    _c = cpp_obj;
+    fff();
 }
