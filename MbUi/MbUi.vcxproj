@@ -112,7 +112,7 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
-      <PrecompiledHeader>Use</PrecompiledHeader>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
@@ -164,7 +164,7 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
-      <PrecompiledHeader>Use</PrecompiledHeader>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
@@ -193,6 +193,9 @@
     </ResourceCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="Game\DownFile.h" />
+    <ClInclude Include="Game\Home.h" />
+    <ClInclude Include="Game\HttpClient.h" />
     <ClInclude Include="MbUi.h" />
     <ClInclude Include="MbUiDlg.h" />
     <ClInclude Include="mb\wke.h" />
@@ -201,6 +204,9 @@
     <ClInclude Include="targetver.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="Game\DownFile.cpp" />
+    <ClCompile Include="Game\Home.cpp" />
+    <ClCompile Include="Game\HttpClient.cpp" />
     <ClCompile Include="MbUi.cpp" />
     <ClCompile Include="MbUiDlg.cpp" />
     <ClCompile Include="stdafx.cpp">

@@ -19,6 +19,9 @@
     <Filter Include="html">
       <UniqueIdentifier>{0b46336f-4282-4629-be55-eab2eaee5068}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Game">
+      <UniqueIdentifier>{e5bf8d2a-64a5-42a8-8027-4095ce1f4526}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="MbUi.h">
@@ -39,6 +42,15 @@
     <ClInclude Include="mb\wke.h">
       <Filter>mb</Filter>
     </ClInclude>
+    <ClInclude Include="Game\DownFile.h">
+      <Filter>Game</Filter>
+    </ClInclude>
+    <ClInclude Include="Game\Home.h">
+      <Filter>Game</Filter>
+    </ClInclude>
+    <ClInclude Include="Game\HttpClient.h">
+      <Filter>Game</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="MbUi.cpp">
@@ -49,6 +61,15 @@
     </ClCompile>
     <ClCompile Include="stdafx.cpp">
       <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="Game\DownFile.cpp">
+      <Filter>Game</Filter>
+    </ClCompile>
+    <ClCompile Include="Game\Home.cpp">
+      <Filter>Game</Filter>
+    </ClCompile>
+    <ClCompile Include="Game\HttpClient.cpp">
+      <Filter>Game</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

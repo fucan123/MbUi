@@ -6,6 +6,9 @@
 #include "MbUi.h"
 #include "MbUiDlg.h"
 #include "afxdialogex.h"
+#include "Game/HttpClient.h"
+#include "Game/DownFile.h"
+#include <fstream>
 
 #include <My/Common/func.h>
 #include <My/Common/Explode.h>
@@ -15,6 +18,7 @@
 #include <My/Win32/PE.h>
 #include <My/Win32/Peb.h>
 #include <My/Common/C.h>
+#include <My/Common/Des.h>
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -68,6 +72,7 @@ CMbUiDlg::CMbUiDlg(CWnd* pParent /*=nullptr*/)
 	: CDialogEx(IDD_MBUI_DIALOG, pParent)
 {
 	g_dlg = this;
+	g_dlg->m_ConfPath[253] = 0x16;
 	m_hIcon = AfxGetApp()->LoadIcon(IDR_MAINFRAME);
 }
 
@@ -123,6 +128,8 @@ BOOL CMbUiDlg::OnInitDialog()
 	RegisterHotKey(m_hWnd, 1001, NULL, VK_F1);
 	RegisterHotKey(m_hWnd, 1002, NULL, VK_F2);
 
+	g_dlg->m_ConfPath[252] = 0x89;
+
 	bool adr = AdjustPrivileges();
 	::printf("提权状态结果:%d\n", adr);
 
@@ -140,20 +147,48 @@ BOOL CMbUiDlg::OnInitDialog()
 		//system(cmd);
 	}
 
+#if 0
+	/* 添加自启项 */
+	char reg[255];
+	sprintf_s(reg, "reg add HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run /v fsauto /t FS_AUTO /d %s\\test.exe /f", m_ConfPath);
+	system(reg);
+#endif
+
 #ifdef _DEBUG
+#if 0
 	AllocConsole();
 	freopen("CON", "w", stdout);
 #endif
+#endif
 #ifdef  _DEBUG
-	//AllocConsole();
-	//freopen("CON", "w", stdout);
+	AllocConsole();
+	freopen("CON", "w", stdout);
 
 	SHGetSpecialFolderPathA(0, m_ConfPath, CSIDL_DESKTOPDIRECTORY, 0);
-	strcat(m_ConfPath, "\\MNQ-9Star");
+	strcat(m_ConfPath, "\\9星2");
+
+#if 0
+	BOOL result = 0;
+	DWORD pid = 5668;
+	HANDLE kernel32 = EnumModuleBaseAddr(pid, L"kernel32.dll");
+	DWORD libw = GetDllFunctionAddress32(pid, "LoadLibraryW", kernel32);
+	result = InjectDll(pid, L"C:\\Users\\fucan\\Desktop\\9星2\\files\\opengl_ps.dll", L"opengl_ps.dll", TRUE);
+	printf("kernel32:%016X %08X %d\n", kernel32, libw, result);
+#endif
+
+	char key[] = "1234567890";
+	char str[] = "test123";
+	char desStr[128], desStr2[128];
+	DesEncrypt(desStr, key, str, strlen(str));
+	DesDecrypt(desStr2, key, desStr, strlen(desStr), true);
+	printf("%s %d\n", desStr, strlen(desStr));
+	printf("%s %d\n", desStr2, strlen(desStr2));
+
+	//while (true);
 #else
-	//pfnNtQuerySetInformationThread f = (pfnNtQuerySetInformationThread)GetNtdllProcAddress("ZwSetInformationThread");
-	//NTSTATUS sta = f(GetCurrentThread(), ThreadHideFromDebugger, NULL, 0);
-	//::printf("sta:%d\n", sta);
+	pfnNtQuerySetInformationThread f = (pfnNtQuerySetInformationThread)GetNtdllProcAddress("ZwSetInformationThread");
+	NTSTATUS sta = f(GetCurrentThread(), ThreadHideFromDebugger, NULL, 0);
+	::printf("sta:%d\n", sta);
 
 	GetCurrentDirectoryA(MAX_PATH, m_ConfPath);
 #endif //  _DEBUG
@@ -170,6 +205,7 @@ BOOL CMbUiDlg::OnInitDialog()
 
 	CString tip;
 	tip.Format(L"(%d)\n", GetLastError());
+
 
 	//AfxMessageBox(dll);
 	//AfxMessageBox(tip);
@@ -286,6 +322,14 @@ LRESULT CMbUiDlg::OnCallJs(WPARAM w, LPARAM l)
 		break;
 	case MSG_ALERT:
 		Alert(msg);
+		break;
+	case MSG_UPSTATUSTEXT:
+		UpdateStatusText(msg);
+		break;
+	case MSG_UPVER_OK:
+		UpVerOk(msg);
+	case MSG_VERIFY_OK:
+		VerifyOk(msg);
 		break;
 	default:
 		break;
@@ -409,6 +453,37 @@ void CMbUiDlg::Alert(my_msg * pMsg)
 	jsCallGlobal(es, f, vs, sizeof(vs) / sizeof(jsValue));
 }
 
+// 更新状态栏文字
+void CMbUiDlg::UpdateStatusText(my_msg * pMsg)
+{
+	jsExecState es = wkeGlobalExec(m_web);
+	jsValue f = jsGetGlobal(es, "UpdateStatusText");
+	jsValue vs[2];
+	if (pMsg->text[0]) vs[0] = jsString(es, pMsg->text);
+	else vs[0] = jsStringW(es, pMsg->text_w);
+	vs[1] = jsInt(pMsg->value[0]);
+
+	jsCallGlobal(es, f, vs, sizeof(vs) / sizeof(jsValue));
+}
+
+// 更新版本号完成
+void CMbUiDlg::UpVerOk(my_msg * pMsg)
+{
+	jsExecState es = wkeGlobalExec(m_web);
+	jsValue f = jsGetGlobal(es, "UpdateVerOk");
+
+	jsCallGlobal(es, f, nullptr, 0);
+}
+
+// 验证成功啦
+void CMbUiDlg::VerifyOk(my_msg * pMsg)
+{
+	jsExecState es = wkeGlobalExec(m_web);
+	jsValue f = jsGetGlobal(es, "VerifyOk");
+
+	jsCallGlobal(es, f, nullptr, 0);
+}
+
 // 获取游戏模块函数
 FARPROC CMbUiDlg::GetGameProcAddress(LPCSTR lpProcName)
 {
@@ -419,7 +494,7 @@ FARPROC CMbUiDlg::GetGameProcAddress(LPCSTR lpProcName)
 void WKE_CALL_TYPE CMbUiDlg::DocumentReadyCallback(wkeWebView webView, void* param)
 {
 	//AfxMessageBox(L"DocumentReadyCallback");
-
+	g_dlg->m_ConfPath[251] = 0x99;
 #if 1
 	CMbUiDlg* p = (CMbUiDlg*)param;
 	jsExecState es = wkeGlobalExec(webView);
@@ -440,6 +515,7 @@ void WKE_CALL_TYPE CMbUiDlg::DocumentReadyCallback(wkeWebView webView, void* par
 	Func_Game_Init Game_Init = GetGameProc(Func_Game_Init, "Game_Init");
 	if (Game_Init) {
 		printf("%p\n", Game_Init);
+		g_dlg->m_ConfPath[250] = 0xCB;
 		Game_Init(g_dlg->m_hWnd, g_dlg->m_ConfPath);
 	}
 
@@ -469,10 +545,16 @@ jsValue JS_CALL CMbUiDlg::js_Func(jsExecState es)
 		return g_dlg->InTeam(es);
 	if (strcmp("put_setting", func_name) == 0)
 		return g_dlg->PutSetting(es);
+	if (strcmp("getin_card", func_name) == 0)
+		return g_dlg->GetInCard(es);
 	if (strcmp("verify_card", func_name) == 0)
 		return g_dlg->VerifyCard(es);
 	if (strcmp("fb_record", func_name) == 0)
 		return g_dlg->FBRecord(es);
+	if (strcmp("update_ver", func_name) == 0) {
+		CreateThread(NULL, NULL, UpdateVer, g_dlg, NULL, NULL);
+		return jsInt(0);
+	}
 
 	CString str;
 	str.Format(L"参数数量:%d", jsArgCount(es));
@@ -532,6 +614,13 @@ jsValue CMbUiDlg::PutSetting(jsExecState es)
 	);
 }
 
+// 转移卡号本机
+jsValue CMbUiDlg::GetInCard(jsExecState es)
+{
+	typedef int(*WINAPI Func_Game_GetInCard)(const wchar_t*);
+	return jsInt((GetGameProc(Func_Game_GetInCard, "Game_GetInCard"))(jsToStringW(es, jsArg(es, 1))));
+}
+
 // 验证卡号
 jsValue CMbUiDlg::VerifyCard(jsExecState es)
 {
@@ -572,6 +661,211 @@ DWORD WINAPI CMbUiDlg::Thread(LPVOID param)
 		Sleep(800);
 	}
 	
+	return 0;
+}
+
+// 更新版本号
+DWORD WINAPI CMbUiDlg::UpdateVer(LPVOID)
+{
+//#define DOWNURL  "http://www.myhostcpp.com/ld_9star"
+#define DOWNURL "http://fz.myhostcpp.com/update_ver"
+
+	my_msg msg;
+	msg.op = MSG_UPVER_OK;
+
+	typedef bool(*WINAPI Func_Game_IsValid)();
+	if (!((GetGameProc(Func_Game_IsValid, "Game_IsValid"))())) {
+		PostMessageA(g_dlg->m_hWnd, MSG_CALLJS, (WPARAM)&msg, 0);
+		Sleep(100);
+		return 0;
+	}
+
+	printf("检查更新版本\n");
+	CString path;
+	path.Format(L"/update_ver?ver=%d=", time(nullptr));
+	//AfxMessageBox(path);
+	std::string result;
+	HttpClient http;
+	http.Request(L"fz.myhostcpp.com", path.GetBuffer(), result);
+	printf("%ws %s\n", path, result.c_str());
+	Explode explode("|", result.c_str());
+	if (explode.GetCount() < 7) {
+		::MessageBox(NULL, L"检查失败, 请重试.", L"检查更新", MB_OK);
+		PostMessageA(g_dlg->m_hWnd, MSG_CALLJS, (WPARAM)&msg, 0);
+		Sleep(100);
+		return 0;
+	}
+
+	std::string ver;
+	char ver_file[255];
+	sprintf_s(ver_file, "%s\\ver.ini", g_dlg->m_ConfPath);
+	ifstream fr(ver_file, fstream::in);
+	getline(fr, ver);
+	if (!fr.is_open()) {
+		printf("没有ver:%s\n", ver_file);
+		ver = "UI.1.0.0|9Star.1.0.0|Game.1.0.0|wxy.1.0.0|pixel.1.0.0|html.1.0.0|firnet.1.0.0|opengl_ps.1.0.0|coor.1.0.0";
+	}
+
+	Explode test("|", ver.c_str());
+	if (test.GetCount() != 9) {
+		ver = "UI.1.0.0|9Star.1.0.0|Game.1.0.0|wxy.1.0.0|pixel.1.0.0|html.1.0.0|firnet.1.0.0|opengl_ps.1.0.0|coor.1.0.0";
+	}
+
+	Explode arr("|", ver.c_str());
+
+	msg.op = MSG_SETTEXT;
+	msg.status_text = 1;
+	msg.value[0] = 1;
+	bool update = false;
+	CString csMsg = L"";
+	char url[256], machine_id[33], host[256];
+	MachineID mac;
+	mac.GetMachineID(machine_id);
+	machine_id[32] = 0;
+	sprintf_s(host, "%s?%d&machine_id=%s&game=1&file", DOWNURL, time(nullptr), machine_id);
+
+	if (strcmp(arr[1], explode[1]) != 0) {
+		update = true;
+		csMsg = L"更新完成, 停止再启动后生效.";
+		printf("下载9Star.dll\n");
+		wcscpy(msg.text_w, L"下载9Star.dll");
+		PostMessageA(g_dlg->m_hWnd, MSG_CALLJS, (WPARAM)&msg, 0);
+		Sleep(100);
+		sprintf_s(url, "%s=9Star.dll", host);
+		DownFile(url, "files/9Star.dll", NULL);
+	}
+	if (strcmp(arr[3], explode[3]) != 0) {
+		update = true;
+		csMsg = L"更新完成, 停止再启动后生效.";
+		printf("下载wxy.dll\n");
+		wcscpy(msg.text_w, L"下载wxy.dll");
+		PostMessageA(g_dlg->m_hWnd, MSG_CALLJS, (WPARAM)&msg, 0);
+		Sleep(100);
+		sprintf_s(url, "%s=wxy.dll", host);
+		DownFile(url, "files/wxy.dll", NULL);
+	}
+	if (strcmp(arr[4], explode[4]) != 0) {
+		update = true;
+		csMsg = L"更新完成, 停止再启动后生效.";
+		printf("下载pixel.ini\n");
+		wcscpy(msg.text_w, L"下载pixel.ini");
+		PostMessageA(g_dlg->m_hWnd, MSG_CALLJS, (WPARAM)&msg, 0);
+		Sleep(100);
+		sprintf_s(url, "%s=pixel.ini", host);
+		DownFile(url, "data/pixel.ini", NULL);
+	}
+	if (strcmp(arr[5], explode[5]) != 0) {
+		update = true;
+		csMsg = L"更新完成, 关闭此程序, 重启生效.";
+
+		printf("下载index.html\n");
+		wcscpy(msg.text_w, L"下载index.html...");
+		PostMessageA(g_dlg->m_hWnd, MSG_CALLJS, (WPARAM)&msg, NULL);
+		Sleep(100);
+		sprintf_s(url, "%s=html/static/index.html", host);
+		DownFile(url, "html/static/index.html", NULL);
+
+		printf("下载main.css\n");
+		wcscpy(msg.text_w, L"下载main.css...");
+		PostMessageA(g_dlg->m_hWnd, MSG_CALLJS, (WPARAM)&msg, NULL);
+		Sleep(100);
+		sprintf_s(url, "%s=html/static/main.css", host);
+		DownFile(url, "html/static/main.css", NULL);
+
+		printf("下载main.js\n");
+		wcscpy(msg.text_w, L"下载main.js...");
+		PostMessageA(g_dlg->m_hWnd, MSG_CALLJS, (WPARAM)&msg, NULL);
+		Sleep(100);
+		sprintf_s(url, "%s=html/static/main.js", host);
+		DownFile(url, "html/static/main.js", NULL);
+	}
+	if (strcmp(arr[6], explode[6]) != 0) {
+		update = true;
+		csMsg = L"更新完成, 停止再启动后生效(sys).";
+		printf("下载firenet.sys\n");
+		wcscpy(msg.text_w, L"下载firenet.sys");
+		PostMessageA(g_dlg->m_hWnd, MSG_CALLJS, (WPARAM)&msg, 0);
+		system("sc stop firenet_safe");
+		system("sc delete firenet_safe");
+		Sleep(100);
+		sprintf_s(url, "%s=firenet.sys", host);
+		DownFile(url, "files/firenet.sys", NULL);
+	}
+	if (strcmp(arr[7], explode[7]) != 0) {
+		update = true;
+		csMsg = L"更新完成, 重启模拟器生效.";
+		printf("下载opengl_ps.dll\n");
+		wcscpy(msg.text_w, L"下载opengl_ps.dll");
+		PostMessageA(g_dlg->m_hWnd, MSG_CALLJS, (WPARAM)&msg, 0);
+		Sleep(100);
+		sprintf_s(url, "%s=opengl_ps.dll", host);
+		DownFile(url, "files/opengl_ps.dll", NULL);
+	}
+	if (strcmp(arr[8], explode[8]) != 0) {
+		update = true;
+		csMsg = L"更新完成, 重启程序后生效.";
+		
+		wcscpy(msg.text_w, L"下载coorx.ini");
+		PostMessageA(g_dlg->m_hWnd, MSG_CALLJS, (WPARAM)&msg, 0);
+		Sleep(100);
+		sprintf_s(url, "%s=coor.ini", host);
+		printf("下载coor.ini %s\n", url);
+		DownFile(url, "data/coor.ini", NULL);
+	}
+	if (strcmp(arr[0], explode[0]) != 0) {
+		char param[128];
+		sprintf_s(param, "点我启动.exe %s=点我启动.exe", host);
+
+		fr.close();
+
+		ofstream fw;
+		fw.open(ver_file);
+		fw << result;
+		fw.close();
+
+		ShellExecuteA(NULL, "open", "down.exe", param, g_dlg->m_ConfPath, SW_SHOWNORMAL);
+
+		if (strcmp(arr[2], explode[2]) == 0) {
+			ExitProcess(0);
+			return 0;
+		}
+	}
+	if (strcmp(arr[2], explode[2]) != 0) {
+		char param[128];
+		sprintf_s(param, "Game.dll %s=Game.dll files", host);
+
+		fr.close();
+
+		ofstream fw;
+		fw.open(ver_file);
+		fw << result;
+		fw.close();
+
+		ShellExecuteA(NULL, "open", "down.exe", param, g_dlg->m_ConfPath, SW_SHOWNORMAL);
+		ExitProcess(0);
+		return 0;
+	}
+
+	my_msg msg2;
+	msg2.op = MSG_UPVER_OK;
+	PostMessageA(g_dlg->m_hWnd, MSG_CALLJS, (WPARAM)&msg2, 0);
+	Sleep(100);
+
+	if (update) {
+		my_msg msg3;
+		msg3.op = MSG_ALERT;
+		msg3.value[0] = 1;
+		wcscpy(msg3.text_w, csMsg);
+		PostMessageA(g_dlg->m_hWnd, MSG_CALLJS, (WPARAM)&msg3, 0);
+	}
+
+	fr.close();
+
+	ofstream fw;
+	fw.open(ver_file);
+	fw << result;
+	fw.close();
+
 	return 0;
 }
 

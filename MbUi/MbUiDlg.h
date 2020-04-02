@@ -11,6 +11,9 @@
 #define MSG_FILLTABLE     4
 #define MSG_SETSETTING    5
 #define MSG_ALERT         6
+#define MSG_UPSTATUSTEXT  100
+#define MSG_UPVER_OK      101
+#define MSG_VERIFY_OK     200
 
 struct my_msg {
 	int  op;
@@ -94,6 +97,9 @@ protected:
 	void    FillTable(my_msg* pMsg);
 	void    SetSetting(my_msg* pMsg);
 	void    Alert(my_msg* pMsg);
+	void    UpdateStatusText(my_msg* pMsg);
+	void    UpVerOk(my_msg* pMsg);
+	void    VerifyOk(my_msg* pMsg);
 
 	// 获取游戏模块函数
 	FARPROC GetGameProcAddress(LPCSTR lpProcName);
@@ -117,12 +123,16 @@ public:
 	jsValue InTeam(jsExecState es);
 	// 设置
 	jsValue PutSetting(jsExecState es);
+	// 转移卡号本机
+	jsValue GetInCard(jsExecState es);
 	// 验证卡号
 	jsValue VerifyCard(jsExecState es);
 	// 查询副本记录
 	jsValue FBRecord(jsExecState es);
 	// 线程
 	static DWORD WINAPI Thread(LPVOID param);
+	// 更新版本号
+	static DWORD WINAPI UpdateVer(LPVOID);
 public:
 	// 配置路径
 	char m_ConfPath[255];

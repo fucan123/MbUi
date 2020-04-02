@@ -67,6 +67,7 @@
             </ul>
             <div class="r" style="padding:0 20px 20px;">
                 <!--layui-btn-primary 无背景按钮-->
+                <a class="yzbj" href="javascript:;" onclick="YZBJ(this);">移至本机</a>
                 <button id="card_btn" type="button" class="layui-btn layui-btn-normal layui-btn-sm" onclick="VerifyCard(this);">确定</button>
             </div>
         </div>
@@ -274,7 +275,7 @@
                             <th>帐号</th>
                             <th>状态</th>
                             <th>在线时长</th>
-                            <th>最近通信</th>
+                            <th>是否登录</th>
                         </tr>
                     </thead>
                 </table>
@@ -323,11 +324,27 @@
             </div>
         </fieldset>
 
+        <div id="agreement-content" style="display:none;">
+            <div class="c0 b c">用户服务协议</div>
+            <ul>
+                <li>一、本程序仅用于游戏副本通关教学演示使用，以便用户更好的理解游戏副本玩法和注意细节，禁止用作非法用途牟取不当利益，若有异议请立即关闭和删除。</li>
+                <li>二、本程序非免费软件，酌情收费以激励作者开发更优秀的作品，若不同意，请勿购买。</li>
+                <li>三、本程序不包含木马、病毒；不读取任何用户敏感信息、不上传任何用户信息；但会读取角色基础数值，更好的与用户交互；如存在非议，请停止使用和删除。</li>
+                <li>四、本程序会不定时更新游戏副本玩法教学。</li>
+                <li>五、本程序禁止随意复制、修改、散播，作者有追究其责任的权利。</li>
+                <li>六、本程序最终解释权归作者所有，可能会不时修改此协议。</li>
+            </ul>
+        </div>
         <div class="r pr10">
-            <a class="my_ck_box tips vb" data-text="如果勾选, 那么启动登入前会关闭所有模拟器；若不能打开模拟器时, 请勾选" href="javascript:;">
-                <i class="layui-icon" data-key="close_mnq"></i> 关闭模拟器
-            </a>
+            <!--
+        <a class="my_ck_box tips vb" data-text="如果勾选, 那么启动登入前会关闭所有模拟器；若不能打开模拟器时, 请勾选" href="javascript:;">
+            <i class="layui-icon" data-key="close_mnq"></i> 关闭模拟器
+        </a>
+        -->
             <!--layui-btn-primary 无背景按钮-->
+            <label style="font-style:normal;vertical-align:bottom;">
+                <input id="agreement" type="checkbox" checked />我同意<a href="javascript:ShowAgreement();" style="color:#FFB800;">用户协议</a>并已仔细阅读
+            </label>
             <button id="start_btn" type="button" class="layui-btn layui-btn-normal" onclick="Start()">启动</button>
             <button id="auto_play_btn" type="button" class="layui-btn layui-btn-primary" onclick="AutoPlay()">自动登号</button>
         </div>
@@ -369,15 +386,15 @@
         ];
         var colors2 = [
             0xFFD871BA, 0xFFC431B5, 0xFFC431B5, 0xFFDB24A0, 0xFFFA43BF, 0xFFFF7679, 0xFFFF8285, 0xFFD72BF1, 0xFFBA0ED4, 0xFFB722D3,
-            0xFFD46DB6, 0xFFD946CA, 0xFFC734B8, 0xFFCA138F, 0xFFFF5FDB, 0xFFFF7A7D, 0xFFF66A6D, 0xFFE337FD, 0xFFC115DB, 0xFFA813C4,
-            0xFFD265B4, 0xFFE65EB2, 0xFFCB4397, 0xFFF253B0, 0xFFFF6BC8, 0xFFFF5BC7, 0xFFFF59C5, 0xFFC41B98, 0xFFD42BA8, 0xFFA60795,
-            0xFFE376C5, 0xFFEA62B6, 0xFFE25AAE, 0xFFFF60BD, 0xFFFA5BB8, 0xFFFF54C0, 0xFFFF55C1, 0xFFC41B98, 0xFFCF26A3, 0xFFA90A98,
-            0xFFFA8ADE, 0xFFE361B9, 0xFFE664BC, 0xFFFF6FD0, 0xFFE851B2, 0xFFF652C3, 0xFFFD59CA, 0xFFCB24A8, 0xFFCB24A8, 0xFFAF0BA0,
-            0xFFFF9DF1, 0xFFE866BE, 0xFFE05EB6, 0xFFFF7DDE, 0xFFEB54B5, 0xFFF955C6, 0xFFFF64D5, 0xFFE33CC0, 0xFFD730B4, 0xFFB915AA,
-            0xFFFFA4F7, 0xFFF47ED4, 0xFFDB65BB, 0xFFFF89E7, 0xFFE15EBC, 0xFFE555C4, 0xFFFB6BDA, 0xFFEF53D8, 0xFFDD41C6, 0xFFCD25C0,
-            0xFFFF96E9, 0xFFFF8EE4, 0xFFEA74CA, 0xFFFF7DDB, 0xFFE05DBB, 0xFFD545B4, 0xFFEA5AC9, 0xFFED51D6, 0xFFE145CA, 0xFFDC34CF,
-            0xFFF490D9, 0xFFF795E0, 0xFFEF8DD8, 0xFFDD74C8, 0xFFDF76CA, 0xFFC952B6, 0xFFD25BBF, 0xFFDF55CF, 0xFFDA50CA, 0xFFE84CDD,
-            0xFFF894DD, 0xFFF391DC, 0xFFFD9BE6, 0xFFD56CC0, 0xFFFC93E7, 0xFFDF68CC, 0xFFDD66CA, 0xFFE75DD7, 0xFFE55BD5, 0xFFFD61F2,
+0xFFD46DB6, 0xFFD946CA, 0xFFC734B8, 0xFFCA138F, 0xFFFF5FDB, 0xFFFF7A7D, 0xFFF66A6D, 0xFFE337FD, 0xFFC115DB, 0xFFA813C4,
+0xFFD265B4, 0xFFE65EB2, 0xFFCB4397, 0xFFF253B0, 0xFFFF6BC8, 0xFFFF5BC7, 0xFFFF59C5, 0xFFC41B98, 0xFFD42BA8, 0xFFA60795,
+0xFFE376C5, 0xFFEA62B6, 0xFFE25AAE, 0xFFFF60BD, 0xFFFA5BB8, 0xFFFF54C0, 0xFFFF55C1, 0xFFC41B98, 0xFFCF26A3, 0xFFA90A98,
+0xFFFA8ADE, 0xFFE361B9, 0xFFE664BC, 0xFFFF6FD0, 0xFFE851B2, 0xFFF652C3, 0xFFFD59CA, 0xFFCB24A8, 0xFFCB24A8, 0xFFAF0BA0,
+0xFFFF9DF1, 0xFFE866BE, 0xFFE05EB6, 0xFFFF7DDE, 0xFFEB54B5, 0xFFF955C6, 0xFFFF64D5, 0xFFE33CC0, 0xFFD730B4, 0xFFB915AA,
+0xFFFFA4F7, 0xFFF47ED4, 0xFFDB65BB, 0xFFFF89E7, 0xFFE15EBC, 0xFFE555C4, 0xFFFB6BDA, 0xFFEF53D8, 0xFFDD41C6, 0xFFCD25C0,
+0xFFFF96E9, 0xFFFF8EE4, 0xFFEA74CA, 0xFFFF7DDB, 0xFFE05DBB, 0xFFD545B4, 0xFFEA5AC9, 0xFFED51D6, 0xFFE145CA, 0xFFDC34CF,
+0xFFF490D9, 0xFFF795E0, 0xFFEF8DD8, 0xFFDD74C8, 0xFFDF76CA, 0xFFC952B6, 0xFFD25BBF, 0xFFDF55CF, 0xFFDA50CA, 0xFFE84CDD,
+0xFFF894DD, 0xFFF391DC, 0xFFFD9BE6, 0xFFD56CC0, 0xFFFC93E7, 0xFFDF68CC, 0xFFDD66CA, 0xFFE75DD7, 0xFFE55BD5, 0xFFFD61F2,
         ]
 
         for (var y = 0; y < 10; y++) {
@@ -390,7 +407,8 @@
             html += "</div>";
             //$('#xxx').append(html);
         }
-        CallCpp("set_title", "MbUi");
+
+        RandTitle();
     </script>
 </body>
 </html>

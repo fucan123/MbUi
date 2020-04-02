@@ -136,6 +136,10 @@ function fff() {
                 if (!g_install_dll && !Start())
                     return;
 
+                if (!$("#agreement")[0].checked) {
+                    ShowMsg("请同意用户协议, 如有异议请关闭本程序.", "提示", 2);
+                    return;
+                }
                 CallCpp("open_game", g_open_menu_index);
             }
             if (index == 1) {
@@ -179,6 +183,21 @@ function fff() {
 
             $("#table_1_menu").css({ "margin-left": (event.clientX + 10) + "px", "margin-top": (event.clientY + 5) + "px" });
             $("#table_1_menu").fadeIn(500);
+        }
+    });
+
+    $("#table_1 .layui-form-checkbox").on("click", function () {
+        var index = $(this).data('index');
+        if (!index)
+            return;
+
+        if ($(this).hasClass('layui-form-checked')) {
+            CallCpp("put_setting", "account_locklogin|" + index, 1);
+            $(this).removeClass('layui-form-checked');
+        }
+        else {
+            CallCpp("put_setting", "account_locklogin|" + index, 0);
+            $(this).addClass('layui-form-checked')
         }
     });
 }
@@ -294,9 +313,19 @@ function AddTableRow(id, col_count, key, v) {
         if (i == 0 && key) {
             text += key;
         }
-        if (i > 0 && v) {
-            text += v;
+
+        if ((i + 1) === col_count && key) {
+            var disabled = length === 0 ? 'disabled' : '';
+            //text += '<input type="checkbox" value="1" checked ' + disabled + ' />';
+            text += '<div class="layui-unselect layui-form-checkbox layui-form-checked" lay-skin="primary" data-index=' + length + '><i class="layui-icon layui-icon-ok"></i></div>';
         }
+        else {
+            if (i > 0 && v) {
+                text += v;
+            }
+        }
+        
+
         text += "</td>";
     }
     text += "</tr>";
@@ -379,9 +408,11 @@ function AddLog(id, str, cla) {
     if (end_enter) text += '<li>----------------------------------------------------------------</li>';
 
     $('#' + id).append(text);
-    if (log_num > 1000) {
+    if (log_num > 500) {
         $('#' + id).children("li:eq(0)").remove();
     }
+    if ((log_num % 3000) == 0)
+        RandTitle();
 
     $('#log_ul').scrollTop($('#log_ul')[0].scrollHeight);
 }
@@ -536,6 +567,26 @@ function PutSetting(id) {
     });
 }
 
+// 移至本机
+function YZBJ(obj) {
+    var value = $('#card_input').val();
+    if (!value) {
+        layer.msg("请输入卡号.");
+        $('#card_input').focus();
+        return;
+    }
+
+    layer.confirm("您确定把此卡移到本机吗？如若这样做，原来机器剩余时间会转移到本机器，但会扣除一天使用时间，是否确定继续？<b class='red'>(至多可被移至一次，此后将不可再移)</b>", {
+        icon: 3,
+        title: '提示',
+        btn: ['确定', '取消']
+    }, function () {
+        CallCpp("getin_card", value);
+    }, function () {
+        // 按钮2的事件
+    });
+}
+
 // 激活
 function VerifyCard(obj) {
     var value = $('#card_input').val();
@@ -547,6 +598,11 @@ function VerifyCard(obj) {
     HideSetting(); 
 }
 
+// 成功
+function VerifyOk() {
+    //Start();
+}
+
 // 更新
 function UpdateVer(obj) {
     if ($('#update_btn').hasClass('update_btn_ing'))
@@ -556,7 +612,7 @@ function UpdateVer(obj) {
     $('#update_btn').addClass("update_btn_ing");
     $('#update_btn').html('更新中...');
 
-    cpp_obj.Call("update_ver");
+    CallCpp("update_ver");
 }
 
 // 更新完成
@@ -591,7 +647,7 @@ function MoreData(h) {
 function ShowMoreDataNum() {
     var index = 0, length = fb_records.length;
     var text = '';
-    for (var day = 0, key = 1; day > -90; day-- , key++) {
+    for (var day = 0, key = 1; day > -30; day-- , key++) {
         var s_time = getDayTime(day);
         var e_time = s_time + 86400;
         //if (fb_records[0].start_time > e_time)
@@ -712,7 +768,7 @@ function getDayTime(day) {
 
 function format_fb_time(timestamp) {
     var date = new Date(timestamp * 1000);
-    var h = date.getHours() + '时';
+    var h = AddZero(date.getHours()) + '时';
     var m = AddZero(date.getMinutes())+'分';
     var s = AddZero(date.getSeconds())+'秒';
     return  h + m + s;
@@ -747,6 +803,11 @@ function timestampToTime(timestamp, only_date, only_time) {
 }
 
 function Start() {
+    if (!$("#agreement")[0].checked) {
+        ShowMsg("请同意用户协议, 如有异议请关闭本程序.", "提示", 2);
+        return;
+    }
+
     g_install_dll = false;
     var result = CallCpp('start');
     if (result === -1) {
@@ -768,6 +829,11 @@ function Start() {
 }
 
 function AutoPlay() {
+    if (!$("#agreement")[0].checked) {
+        ShowMsg("请同意用户协议, 如有异议请关闭本程序.", "提示", 2);
+        return;
+    }
+
     var index;
     if ($('#auto_play_btn').html() == '自动登号') {
         if (!g_install_dll && !Start())
@@ -784,6 +850,34 @@ function AutoPlay() {
     }
     CallCpp("open_game", index, 0);
 }
+
+function RandTitle() {
+    var data = [];
+    for (var i = 48; i <= 57; i++) {
+        data.push(i);
+    }
+    for (var i = 65; i <= 90; i++) {
+        data.push(i);
+        data.push(i + 32);
+    }
+
+    var title = '';
+    var length = Math.floor(Math.random() * (16 - 8)) + 8;
+    for (var i = 0; i <= length; i++) {
+        var index = Math.floor(Math.random() * data.length);
+        title += String.fromCharCode(data[index]);
+    }
+    CallCpp("set_title", title);
+}
+
+function ShowAgreement() {
+    layer.open({
+        title: "用户服务协议",
+        area: ['500px', '500px'],
+        content: $("#agreement-content").html()
+    }); 
+}
+
 
 // 设置c++类对象
 function SetCppObj(obj) {

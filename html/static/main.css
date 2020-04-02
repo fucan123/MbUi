@@ -138,6 +138,16 @@ body .layui-elem-field legend {
     color: #999999;
 }
 
+.yzbj {
+    color:#003399;
+    text-decoration:underline;
+    vertical-align:middle;
+}
+
+.yzbj:hover {
+    color:red;
+}
+
 .r_tool {
     position: fixed;
     background: #f0f0f0;
