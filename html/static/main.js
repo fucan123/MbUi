@@ -508,8 +508,8 @@ function AutoTalk() {
     }
 
     g_open_talk = true;
-    //AddLog("log_ul", 'º°»°:'+g_setting['talk_content'], "blue");
-    cpp_obj.Call("talk", g_setting['talk_content'], g_setting['talk_type']);
+    AddLog("log_ul", 'º°»°:'+g_setting['talk_content'], "blue");
+    CallCpp("talk", g_setting['talk_content'], parseInt(g_setting['talk_type']));
     setTimeout(AutoTalk, g_setting['talk_intval'] * 1000);
 }
 

@@ -301,7 +301,7 @@
             <legend class="fz14"><i class="layui-icon">&#xe620;</i> 设置</legend>
             <div class="setting" id="setting_btn">
                 <a href="javascript:;" onclick="ShowSetting('basic_setting', 300);">基本设置</a> |
-                <!--<a href="javascript:;" onclick="ShowSetting('talk_setting', 300);">喊话设置</a> |-->
+                <a href="javascript:;" onclick="ShowSetting('talk_setting', 300);">喊话设置</a> |
                 <a href="javascript:;" id="update_btn" class="update_btn" onclick="UpdateVer(this)">
                     检查更新<i class="layui-icon">&#xe607;</i>
                 </a>
@@ -354,10 +354,11 @@
         //SetMarginLeftClientWidth('log');
         //SetClientHeight("log_ul", 50);
         var log_i = 0;
+        /*
         setInterval(function () {
            // AddLog('log_ul', ++log_i, "c0");
         }, 800);
-        /*
+        */
         for (var i = 1; i < 106; i++) {
             AddTableRow("table_1", 0, i);
             AddLog("log_ul", i, "green");

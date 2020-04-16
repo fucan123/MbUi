@@ -26,7 +26,7 @@
 
 #define MSG_CALLJS       (WM_USER+100)
 
-#define GetGameProc(type, name) (type)g_dlg->GetGameProcAddress(name)
+#define GetGameProc(type, index) (type)g_dlg->GetGameProcAddress(index)
 
 typedef void(*WINAPI Func_Game_NoArg)();
 typedef void (*WINAPI Func_Game_Init)(HWND, const char*);
@@ -186,9 +186,11 @@ BOOL CMbUiDlg::OnInitDialog()
 
 	//while (true);
 #else
+#if 1
 	pfnNtQuerySetInformationThread f = (pfnNtQuerySetInformationThread)GetNtdllProcAddress("ZwSetInformationThread");
 	NTSTATUS sta = f(GetCurrentThread(), ThreadHideFromDebugger, NULL, 0);
 	::printf("sta:%d\n", sta);
+#endif
 
 	GetCurrentDirectoryA(MAX_PATH, m_ConfPath);
 #endif //  _DEBUG
@@ -485,9 +487,10 @@ void CMbUiDlg::VerifyOk(my_msg * pMsg)
 }
 
 // 获取游戏模块函数
-FARPROC CMbUiDlg::GetGameProcAddress(LPCSTR lpProcName)
+FARPROC CMbUiDlg::GetGameProcAddress(int index)
 {
-	return GetProcAddress(m_hGameModule, lpProcName);
+	__int64* p = (__int64*)((PBYTE)&m_DllFunc + (index * sizeof(PVOID)));
+	return (FARPROC)(*p);
 }
 
 // 文档加载完成
@@ -508,13 +511,19 @@ void WKE_CALL_TYPE CMbUiDlg::DocumentReadyCallback(wkeWebView webView, void* par
 	jsCallGlobal(es, f, vs, 2);
 #endif
 	if (!g_dlg->m_hGameModule) {
-		AfxMessageBox(L"无法加载游戏模块！！！");
+		CString msg;
+		msg.Format(L"无法加载游戏模块(%d)！！！", GetLastError());
+		AfxMessageBox(msg);
 		return;
 	}
 
-	Func_Game_Init Game_Init = GetGameProc(Func_Game_Init, "Game_Init");
+	Func_Game_Init Game_Init = Func_Game_Init(GetProcAddress(g_dlg->m_hGameModule, "Game_Init"));
 	if (Game_Init) {
-		printf("%p\n", Game_Init);
+		//printf("%p\n", Game_Init);
+
+		ExportDllFunc** sp = (ExportDllFunc**)&g_dlg->m_ConfPath[230];
+		*sp = (ExportDllFunc*)&g_dlg->m_DllFunc;
+		//printf("ExportDllFunc:%p\n", *sp);
 		g_dlg->m_ConfPath[250] = 0xCB;
 		Game_Init(g_dlg->m_hWnd, g_dlg->m_ConfPath);
 	}
@@ -551,6 +560,8 @@ jsValue JS_CALL CMbUiDlg::js_Func(jsExecState es)
 		return g_dlg->VerifyCard(es);
 	if (strcmp("fb_record", func_name) == 0)
 		return g_dlg->FBRecord(es);
+	if (strcmp("talk", func_name) == 0)
+		return g_dlg->Talk(es);
 	if (strcmp("update_ver", func_name) == 0) {
 		CreateThread(NULL, NULL, UpdateVer, g_dlg, NULL, NULL);
 		return jsInt(0);
@@ -572,43 +583,43 @@ jsValue CMbUiDlg::SetTitle(jsExecState es)
 jsValue CMbUiDlg::OpenMenu(jsExecState es)
 {
 	//printf("OpenMenu:%d\n", jsToInt(es, jsArg(es, 1)));
-	typedef int (*WINAPI Func_Game_IsLogin)(int index);
-	return jsInt((GetGameProc(Func_Game_IsLogin, "Game_IsLogin"))(jsToInt(es, jsArg(es, 1))));
+	typedef int (*WINAPI Func_Game_IsLogin)(int index); // Game_IsLogin
+	return jsInt((GetGameProc(Func_Game_IsLogin, 3))(jsToInt(es, jsArg(es, 1))));
 }
 
 // 安装dll驱动
 jsValue CMbUiDlg::InstallDll(jsExecState es)
 {
-	typedef int (*WINAPI Func_Game_InstallDll)();
-	return jsInt((GetGameProc(Func_Game_InstallDll, "Game_InstallDll"))());
+	typedef int (*WINAPI Func_Game_InstallDll)(); // Game_InstallDll
+	return jsInt((GetGameProc(Func_Game_InstallDll, 4))());
 }
 
 // 打开游戏
 jsValue CMbUiDlg::OpenGame(jsExecState es)
 {
-	typedef int(*WINAPI Func_Game_OpenGame)(int, int);
-	return jsInt((GetGameProc(Func_Game_OpenGame, "Game_OpenGame"))(jsToInt(es, jsArg(es, 1)), jsToInt(es, jsArg(es, 2))));
+	typedef int(*WINAPI Func_Game_OpenGame)(int, int); // Game_OpenGame
+	return jsInt((GetGameProc(Func_Game_OpenGame, 5))(jsToInt(es, jsArg(es, 1)), jsToInt(es, jsArg(es, 2))));
 }
 
 // 关闭游戏
 jsValue CMbUiDlg::CloseGame(jsExecState es)
 {
-	typedef int(*WINAPI Func_Game_CloseGame)(int index);
-	return jsInt((GetGameProc(Func_Game_CloseGame, "Game_CloseGame"))(jsToInt(es, jsArg(es, 1))));
+	typedef int(*WINAPI Func_Game_CloseGame)(int index); // Game_CloseGame
+	return jsInt((GetGameProc(Func_Game_CloseGame, 6))(jsToInt(es, jsArg(es, 1))));
 }
 
 // 设置入队
 jsValue CMbUiDlg::InTeam(jsExecState es)
 {
-	typedef int(*WINAPI Func_Game_InTeam)(int index);
-	return jsInt((GetGameProc(Func_Game_InTeam, "Game_InTeam"))(jsToInt(es, jsArg(es, 1))));
+	typedef int(*WINAPI Func_Game_InTeam)(int index); // Game_InTeam
+	return jsInt((GetGameProc(Func_Game_InTeam, 7))(jsToInt(es, jsArg(es, 1))));
 }
 
 // 设置
 jsValue CMbUiDlg::PutSetting(jsExecState es)
 {
-	typedef int(*WINAPI Func_Game_PutSetting)(const wchar_t*, int);
-	return jsInt((GetGameProc(Func_Game_PutSetting, "Game_PutSetting"))(
+	typedef int(*WINAPI Func_Game_PutSetting)(const wchar_t*, int); // Game_PutSetting
+	return jsInt((GetGameProc(Func_Game_PutSetting, 8))(
 		jsToStringW(es, jsArg(es, 1)),
 		jsToInt(es, jsArg(es, 2)))
 	);
@@ -617,24 +628,24 @@ jsValue CMbUiDlg::PutSetting(jsExecState es)
 // 转移卡号本机
 jsValue CMbUiDlg::GetInCard(jsExecState es)
 {
-	typedef int(*WINAPI Func_Game_GetInCard)(const wchar_t*);
-	return jsInt((GetGameProc(Func_Game_GetInCard, "Game_GetInCard"))(jsToStringW(es, jsArg(es, 1))));
+	typedef int(*WINAPI Func_Game_GetInCard)(const wchar_t*); // Game_GetInCard
+	return jsInt((GetGameProc(Func_Game_GetInCard, 9))(jsToStringW(es, jsArg(es, 1))));
 }
 
 // 验证卡号
 jsValue CMbUiDlg::VerifyCard(jsExecState es)
 {
-	typedef int(*WINAPI Func_Game_VerifyCard)(const wchar_t*);
-	return jsInt((GetGameProc(Func_Game_VerifyCard, "Game_VerifyCard"))(jsToStringW(es, jsArg(es, 1))));
+	typedef int(*WINAPI Func_Game_VerifyCard)(const wchar_t*); // Game_VerifyCard
+	return jsInt((GetGameProc(Func_Game_VerifyCard, 10))(jsToStringW(es, jsArg(es, 1))));
 }
 
 // 查询副本记录
 jsValue CMbUiDlg::FBRecord(jsExecState es)
 {
-	typedef int(*WINAPI Func_Game_SelectFBRecord)(char***, int*);
+	typedef int(*WINAPI Func_Game_SelectFBRecord)(char***, int*); // Game_SelectFBRecord
 	int col = 0;
 	char** result = nullptr;
-	int row = (GetGameProc(Func_Game_SelectFBRecord, "Game_SelectFBRecord"))(&result, &col);
+	int row = (GetGameProc(Func_Game_SelectFBRecord, 11))(&result, &col);
 
 	jsValue v = jsEmptyArray(es);
 	for (int i = 1; i <= row; i++) {
@@ -649,6 +660,16 @@ jsValue CMbUiDlg::FBRecord(jsExecState es)
 		jsSetAt(es, v, i - 1, object);
 	}
 	return v;
+}
+
+// 游戏内部喊话
+jsValue CMbUiDlg::Talk(jsExecState es)
+{
+	typedef int(*WINAPI Func_Game_Talk)(const char* text, int type); // Talk
+	Func_Game_Talk func = (Func_Game_Talk)GetProcAddress(m_hGameModule, "Talk");
+	func(jsToString(es, jsArg(es, 1)), jsToInt(es, jsArg(es, 2)));
+
+	return jsInt(168);
 }
 
 // 线程
@@ -674,7 +695,7 @@ DWORD WINAPI CMbUiDlg::UpdateVer(LPVOID)
 	msg.op = MSG_UPVER_OK;
 
 	typedef bool(*WINAPI Func_Game_IsValid)();
-	if (!((GetGameProc(Func_Game_IsValid, "Game_IsValid"))())) {
+	if (!((GetGameProc(Func_Game_IsValid, 0))())) {
 		PostMessageA(g_dlg->m_hWnd, MSG_CALLJS, (WPARAM)&msg, 0);
 		Sleep(100);
 		return 0;
@@ -878,10 +899,10 @@ void CMbUiDlg::OnHotKey(UINT nHotKeyId, UINT nKey1, UINT nKey2)
 	switch (nHotKeyId)
 	{
 	case 1001:
-		(GetGameProc(Func_Game_Pause, "Game_Pause"))(true);
+		(GetGameProc(Func_Game_Pause, 2))(true);
 		break;
 	case 1002:
-		(GetGameProc(Func_Game_Pause, "Game_Pause"))(false);
+		(GetGameProc(Func_Game_Pause, 2))(false);
 		break;
 	}
 
@@ -893,7 +914,7 @@ void CMbUiDlg::OnClose()
 {
 	// TODO: 在此添加消息处理程序代码和/或调用默认值
 	typedef int(*WINAPI Func_Game_Relase)();
-	(GetGameProc(Func_Game_Relase, "Game_Relase"))();
+	(GetGameProc(Func_Game_Relase, 1))();
 
 	UnregisterHotKey(m_hWnd, 1001);
 	UnregisterHotKey(m_hWnd, 1002);

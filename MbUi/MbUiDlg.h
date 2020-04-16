@@ -15,6 +15,22 @@
 #define MSG_UPVER_OK      101
 #define MSG_VERIFY_OK     200
 
+typedef struct export_dll_func
+{
+	PVOID IsVaid;
+	PVOID Relase;
+	PVOID Pause;
+	PVOID IsLogin;
+	PVOID InstallDll;
+	PVOID OpenGame;
+	PVOID CloseGame;
+	PVOID InTeam;
+	PVOID PutSetting;
+	PVOID GetInCard;
+	PVOID VerifyCard;
+	PVOID SelectFBRecord;
+} ExportDllFunc;
+
 struct my_msg {
 	int  op;
 	char id[32];
@@ -102,7 +118,7 @@ protected:
 	void    VerifyOk(my_msg* pMsg);
 
 	// 获取游戏模块函数
-	FARPROC GetGameProcAddress(LPCSTR lpProcName);
+	FARPROC GetGameProcAddress(int index);
 public:
 	// 文档加载完成
 	static void WKE_CALL_TYPE DocumentReadyCallback(wkeWebView webView, void* param);
@@ -129,6 +145,8 @@ public:
 	jsValue VerifyCard(jsExecState es);
 	// 查询副本记录
 	jsValue FBRecord(jsExecState es);
+	// 游戏内部喊话
+	jsValue Talk(jsExecState es);
 	// 线程
 	static DWORD WINAPI Thread(LPVOID param);
 	// 更新版本号
@@ -136,8 +154,8 @@ public:
 public:
 	// 配置路径
 	char m_ConfPath[255];
-
 	HMODULE m_hGameModule;
+	ExportDllFunc m_DllFunc;
 
 	wkeWebView  m_web;
 	jsExecState m_es;
