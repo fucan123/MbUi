@@ -276,6 +276,20 @@ body .layui-elem-field legend {
 .setting a.update_btn_ing:hover {
     text-decoration: none;
 }
+.setting a.step_btn {
+    color: darkgoldenrod;
+}
+.setting a.step_btn:hover {
+    color: #666666;
+    text-decoration: none;
+}
+.setting a.step_btn_ing {
+    cursor: text;
+    color: #BBBBBB;
+}
+.setting a.step_btn_ing:hover {
+    text-decoration: none;
+}
 .setting_radio {
     margin: 10px 10px 10px 10px;
     padding-left: 5px;

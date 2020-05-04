@@ -13,6 +13,7 @@
 #define MSG_ALERT         6
 #define MSG_UPSTATUSTEXT  100
 #define MSG_UPVER_OK      101
+#define MSG_UPSTEP_OK     102
 #define MSG_VERIFY_OK     200
 
 typedef struct export_dll_func
@@ -106,6 +107,8 @@ protected:
 	afx_msg HCURSOR OnQueryDragIcon();
 	DECLARE_MESSAGE_MAP()
 
+	int     GetSysCallIndex(const char* name);
+
 	LRESULT OnCallJs(WPARAM w, LPARAM l);
 	void    AddLog(my_msg* pMsg);
 	void    SetText(my_msg* pMsg);
@@ -115,6 +118,7 @@ protected:
 	void    Alert(my_msg* pMsg);
 	void    UpdateStatusText(my_msg* pMsg);
 	void    UpVerOk(my_msg* pMsg);
+	void    UpStepOk(my_msg* pMsg);
 	void    VerifyOk(my_msg* pMsg);
 
 	// 获取游戏模块函数
@@ -151,6 +155,8 @@ public:
 	static DWORD WINAPI Thread(LPVOID param);
 	// 更新版本号
 	static DWORD WINAPI UpdateVer(LPVOID);
+	// 更新流程文件
+	static DWORD WINAPI UpdateStep(LPVOID);
 public:
 	// 配置路径
 	char m_ConfPath[255];

@@ -576,7 +576,7 @@ function YZBJ(obj) {
         return;
     }
 
-    layer.confirm("您确定把此卡移到本机吗？如若这样做，原来机器剩余时间会转移到本机器，但会扣除一天使用时间，是否确定继续？<b class='red'>(至多可被移至一次，此后将不可再移)</b>", {
+    layer.confirm("您确定把此卡移到本机吗？如若这样做，原来机器剩余时间会转移到本机器<br />(第<b class='red'>1</b>次会扣除<b class='red'>3</b>天, 此后每移<b class='red'>1</b>次会扣除<b class='red'>已移机次数*2+3</b>天)<br />是否确定继续？", {
         icon: 3,
         title: '提示',
         btn: ['确定', '取消']
@@ -621,6 +621,37 @@ function UpdateVerOk() {
     $('#update_btn').addClass("update_btn");
     $('#update_btn').html('检查更新<i class="layui-icon">&#xe607;</i>');
     UpdateStatusText("更新完成.", 2);
+}
+
+// 更新流程
+function UpdateStep(obj) {
+    if ($('#step_btn').hasClass('step_btn_ing'))
+        return;
+
+    layer.confirm("同步流程会覆盖同名文件, 请您先手动备份好, 是否还继续?", {
+        icon: 3,
+        title: '提示',
+        btn: ['确定', '取消']
+    }, function () {
+        $('#step_btn').removeClass('step_btn');
+        $('#step_btn').addClass("step_btn_ing");
+        $('#step_btn').html('同步中...');
+        layer.closeAll();
+
+        CallCpp("update_step");
+    }, function () {
+        // 按钮2的事件
+    });
+}
+
+// 更新流程完成
+function UpdateStepOk() {
+    $('#step_btn').removeClass('step_btn_ing');
+    $('#step_btn').addClass("step_btn");
+    $('#step_btn').html('同步流程<i class="layui-icon">&#xe607;</i>');
+    UpdateStatusText("同步流程完成.", 2);
+
+    ShowMsg("同步流程已完成, 但需要重启软件生效.", "提示", 1);
 }
 
 // 前面添加零

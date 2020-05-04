@@ -22,6 +22,9 @@
     <Filter Include="Game">
       <UniqueIdentifier>{e5bf8d2a-64a5-42a8-8027-4095ce1f4526}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Asm">
+      <UniqueIdentifier>{dcadcffc-b213-4256-9609-d90589796530}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="MbUi.h">
@@ -50,6 +53,9 @@
     </ClInclude>
     <ClInclude Include="Game\HttpClient.h">
       <Filter>Game</Filter>
+    </ClInclude>
+    <ClInclude Include="Asm.h">
+      <Filter>Asm</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -89,6 +95,9 @@
     </None>
     <None Include="..\html\static\main.js">
       <Filter>html</Filter>
+    </None>
+    <None Include="Asm.asm">
+      <Filter>Asm</Filter>
     </None>
   </ItemGroup>
   <ItemGroup>

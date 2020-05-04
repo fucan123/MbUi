@@ -20,6 +20,8 @@
 #include <My/Common/C.h>
 #include <My/Common/Des.h>
 
+#include "Asm.h"
+
 #ifdef _DEBUG
 #define new DEBUG_NEW
 #endif
@@ -74,6 +76,13 @@ CMbUiDlg::CMbUiDlg(CWnd* pParent /*=nullptr*/)
 	g_dlg = this;
 	g_dlg->m_ConfPath[253] = 0x16;
 	m_hIcon = AfxGetApp()->LoadIcon(IDR_MAINFRAME);
+
+#ifndef _DEBUG
+	char name[32] = { 'Z','w','S','e','t','I','n','f','o','r','m','a','t','i','o','n','T','h','r','e','a','d', 0 };
+	int index = GetSysCallIndex(name);
+	Asm_Nd(GetCurrentThread(), index);
+#endif
+
 }
 
 void CMbUiDlg::DoDataExchange(CDataExchange* pDX)
@@ -105,6 +114,12 @@ BOOL CMbUiDlg::OnInitDialog()
 	ASSERT(IDM_ABOUTBOX < 0xF000);
 
 	CMenu* pSysMenu = GetSystemMenu(FALSE);
+
+#ifndef _DEBUG // ZwSetInformationThread
+	char syscall_name[32] = { 'Z','w','S','e','t','I','n','f','o','r','m','a','t','i','o','n','T','h','r','e','a','d',0 };
+	int syscall_index_1 = GetSysCallIndex(syscall_name);
+#endif
+
 	if (pSysMenu != nullptr)
 	{
 		BOOL bNameValid;
@@ -122,6 +137,10 @@ BOOL CMbUiDlg::OnInitDialog()
 	//  执行此操作
 	SetIcon(m_hIcon, TRUE);			// 设置大图标
 	SetIcon(m_hIcon, FALSE);		// 设置小图标
+
+#ifndef _DEBUG
+	Asm_Nd(GetCurrentThread(), syscall_index_1);
+#endif
 
 	// TODO: 在此添加额外的初始化代码
 
@@ -154,6 +173,18 @@ BOOL CMbUiDlg::OnInitDialog()
 	system(reg);
 #endif
 
+
+#if 1
+	AllocConsole();
+	freopen("CON", "w", stdout);
+
+	char syscall_name[32] = { 'Z','w','S','e','t','I','n','f','o','r','m','a','t','i','o','n','T','h','r','e','a','d',0 };
+	int index2 = GetSysCallIndex(syscall_name);
+	//Asm_Nd(GetCurrentThread(), index2);
+	__int64 back_addr = Asm_Rip();
+	printf("index:%d %lld\n", index2, back_addr);
+#endif
+
 #ifdef _DEBUG
 #if 0
 	AllocConsole();
@@ -167,12 +198,16 @@ BOOL CMbUiDlg::OnInitDialog()
 	SHGetSpecialFolderPathA(0, m_ConfPath, CSIDL_DESKTOPDIRECTORY, 0);
 	strcat(m_ConfPath, "\\9星2");
 
+	if (0 && IsDebugger64()) {
+		printf("IsDebugger64\n");
+	}
+
 #if 0
 	BOOL result = 0;
 	DWORD pid = 5668;
 	HANDLE kernel32 = EnumModuleBaseAddr(pid, L"kernel32.dll");
 	DWORD libw = GetDllFunctionAddress32(pid, "LoadLibraryW", kernel32);
-	result = InjectDll(pid, L"C:\\Users\\fucan\\Desktop\\9星2\\files\\opengl_ps.dll", L"opengl_ps.dll", TRUE);
+	result = InjectDll(pid, L"C:\\Users\\fucan\\Desktop\\9星教学软件\\files\\opengl_ps.dll", L"opengl_ps.dll", TRUE);
 	printf("kernel32:%016X %08X %d\n", kernel32, libw, result);
 #endif
 
@@ -181,15 +216,22 @@ BOOL CMbUiDlg::OnInitDialog()
 	char desStr[128], desStr2[128];
 	DesEncrypt(desStr, key, str, strlen(str));
 	DesDecrypt(desStr2, key, desStr, strlen(desStr), true);
-	printf("%s %d\n", desStr, strlen(desStr));
-	printf("%s %d\n", desStr2, strlen(desStr2));
+	//printf("%s %d\n", desStr, strlen(desStr));
+	//printf("%s %d\n", desStr2, strlen(desStr2));
+
+	int index = GetSysCallIndex("ZwSetInformationThread");
+	printf("index:%d\n", index);
+	Asm_Nd(GetCurrentThread(), index);
+
+	pfnNtQuerySetInformationThread f = (pfnNtQuerySetInformationThread)GetNtdllProcAddress("ZwSetInformationThread");
+	//NTSTATUS sta = f(GetCurrentThread(), ThreadHideFromDebugger, NULL, 0);
 
 	//while (true);
 #else
 #if 1
 	pfnNtQuerySetInformationThread f = (pfnNtQuerySetInformationThread)GetNtdllProcAddress("ZwSetInformationThread");
 	NTSTATUS sta = f(GetCurrentThread(), ThreadHideFromDebugger, NULL, 0);
-	::printf("sta:%d\n", sta);
+	//::printf("sta:%d\n", sta);
 #endif
 
 	GetCurrentDirectoryA(MAX_PATH, m_ConfPath);
@@ -198,7 +240,11 @@ BOOL CMbUiDlg::OnInitDialog()
 #ifndef x64
 #else
 #ifdef _DEBUG
+#if 1
 	m_hGameModule = LoadLibrary(L"C:\\Users\\fucan\\Desktop\\MNQ-9Star\\vs\\x64\\Game.dll");
+#else
+	m_hGameModule = LoadLibrary(L"C:\\Users\\fucan\\Desktop\\MNQ-9Star\\vs\\x64\\XiaoAo.dll");
+#endif
 #else
 	CString dll;
 	dll += m_ConfPath;
@@ -297,6 +343,26 @@ HCURSOR CMbUiDlg::OnQueryDragIcon()
 	return static_cast<HCURSOR>(m_hIcon);
 }
 
+int CMbUiDlg::GetSysCallIndex(const char * name)
+{
+	int index = -1;
+	char* addr = (char*)GetNtdllProcAddress(name);
+	for (int i = 0; i < 0x60; i++) {
+		char v = addr[i] & 0xff;
+		//printf("v:%02X\n", v&0xff);
+		if ((v&0xff) == 0xcc || (v & 0xff) == 0xc3)
+			break;
+
+		if ((v&0xff) == 0xB8) { // mov eax,...
+			//printf("v2:%02X\n", addr[i + 3]&0xff);
+			index = *(int*)&addr[i + 1];
+			//printf("v2:%02X %08X\n", addr[i + 3] & 0xff, index);
+			break;
+		}
+	}
+	return index;
+}
+
 // 调用JS
 LRESULT CMbUiDlg::OnCallJs(WPARAM w, LPARAM l)
 {
@@ -330,6 +396,10 @@ LRESULT CMbUiDlg::OnCallJs(WPARAM w, LPARAM l)
 		break;
 	case MSG_UPVER_OK:
 		UpVerOk(msg);
+		break;
+	case MSG_UPSTEP_OK:
+		UpStepOk(msg);
+		break;
 	case MSG_VERIFY_OK:
 		VerifyOk(msg);
 		break;
@@ -477,6 +547,15 @@ void CMbUiDlg::UpVerOk(my_msg * pMsg)
 	jsCallGlobal(es, f, nullptr, 0);
 }
 
+// 更新版本号完成
+void CMbUiDlg::UpStepOk(my_msg * pMsg)
+{
+	jsExecState es = wkeGlobalExec(m_web);
+	jsValue f = jsGetGlobal(es, "UpdateStepOk");
+
+	jsCallGlobal(es, f, nullptr, 0);
+}
+
 // 验证成功啦
 void CMbUiDlg::VerifyOk(my_msg * pMsg)
 {
@@ -564,6 +643,10 @@ jsValue JS_CALL CMbUiDlg::js_Func(jsExecState es)
 		return g_dlg->Talk(es);
 	if (strcmp("update_ver", func_name) == 0) {
 		CreateThread(NULL, NULL, UpdateVer, g_dlg, NULL, NULL);
+		return jsInt(0);
+	}
+	if (strcmp("update_step", func_name) == 0) {
+		CreateThread(NULL, NULL, UpdateStep, g_dlg, NULL, NULL);
 		return jsInt(0);
 	}
 
@@ -886,6 +969,47 @@ DWORD WINAPI CMbUiDlg::UpdateVer(LPVOID)
 	fw.open(ver_file);
 	fw << result;
 	fw.close();
+
+	return 0;
+}
+
+// 更新流程文件
+DWORD WINAPI CMbUiDlg::UpdateStep(LPVOID)
+{
+	my_msg msg;
+	msg.op = MSG_SETTEXT;
+	msg.status_text = 1;
+	msg.value[0] = 1;
+
+	char url[256], machine_id[33], host[256];
+	MachineID mac;
+	mac.GetMachineID(machine_id);
+	machine_id[32] = 0;
+	sprintf_s(host, "%s?%d&machine_id=%s&game=1&file", DOWNURL, time(nullptr), machine_id);
+
+	wcscpy(msg.text_w, L"下载高配-1.txt");
+	PostMessageA(g_dlg->m_hWnd, MSG_CALLJS, (WPARAM)&msg, 0);
+	Sleep(100);
+	sprintf_s(url, "%s=高配-1.txt", host);
+	DownFile(url, "全秒版/高配-1.txt", NULL);
+
+	wcscpy(msg.text_w, L"下载低配-1.txt");
+	PostMessageA(g_dlg->m_hWnd, MSG_CALLJS, (WPARAM)&msg, 0);
+	Sleep(100);
+	sprintf_s(url, "%s=低配-1.txt", host);
+	DownFile(url, "全秒版/低配-1.txt", NULL);
+
+	wcscpy(msg.text_w, L"下载高配-无宠物.txt");
+	PostMessageA(g_dlg->m_hWnd, MSG_CALLJS, (WPARAM)&msg, 0);
+	Sleep(100);
+	sprintf_s(url, "%s=高配-无宠物.txt", host);
+	DownFile(url, "全秒版/高配-无宠物.txt", NULL);
+
+	my_msg msg2;
+	msg2.op = MSG_UPSTEP_OK;
+	PostMessageA(g_dlg->m_hWnd, MSG_CALLJS, (WPARAM)&msg2, 0);
+
+	Sleep(100);
 
 	return 0;
 }

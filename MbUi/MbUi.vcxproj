@@ -193,6 +193,7 @@
     </ResourceCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="Asm.h" />
     <ClInclude Include="Game\DownFile.h" />
     <ClInclude Include="Game\Home.h" />
     <ClInclude Include="Game\HttpClient.h" />
@@ -223,6 +224,13 @@
     <None Include="..\html\static\index.html" />
     <None Include="..\html\static\main.css" />
     <None Include="..\html\static\main.js" />
+    <CustomBuild Include="Asm.asm">
+      <FileType>Document</FileType>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">ml64 /Fo $(IntDir)%(fileName).obj /c %(fileName).asm</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(IntDir)%(fileName).obj</Outputs>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">ml64 /Fo $(IntDir)%(fileName).obj /c %(fileName).asm</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(IntDir)%(fileName).obj</Outputs>
+    </CustomBuild>
     <None Include="res\MbUi.rc2" />
   </ItemGroup>
   <ItemGroup>
