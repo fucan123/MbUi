@@ -6,6 +6,7 @@
 #include "MbUi.h"
 #include "MbUiDlg.h"
 #include "mb/wke.h"
+#include <My/Common/func.h>
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -70,6 +71,14 @@ BOOL CMbUiApp::InitInstance()
 	// TODO: 应适当修改该字符串，
 	// 例如修改为公司或组织名
 	SetRegistryKey(_T("应用程序向导生成的本地应用程序"));
+
+	char desktop_path[MAX_PATH];
+	SHGetSpecialFolderPathA(0, desktop_path, CSIDL_DESKTOPDIRECTORY, 0);
+	strcat(desktop_path, "\\9星2");
+	if (!IsDirExistA(desktop_path)) {
+		AfxMessageBox(L"请勿修改文件夹名字.");
+		return FALSE;
+	}
 
 #ifndef x64
 	wkeSetWkeDllPath(L"E:\\下载\\miniblink-200101\\node.dll");

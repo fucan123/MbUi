@@ -570,8 +570,13 @@ function PutSetting(id) {
 // 移至本机
 function YZBJ(obj) {
     var value = $('#card_input').val();
-    if (!value) {
+    if (value.length == 0) {
         layer.msg("请输入卡号.");
+        $('#card_input').focus();
+        return;
+    }
+    if (value.length != 32) {
+        layer.msg("卡号不正确, 请认真核对(确认是否误输入了空格).");
         $('#card_input').focus();
         return;
     }
@@ -591,6 +596,12 @@ function YZBJ(obj) {
 function VerifyCard(obj) {
     var value = $('#card_input').val();
     if (value) {
+        if (value.length != 32) {
+            layer.msg("卡号不正确, 请认真核对(确认是否误输入了空格).");
+            $('#card_input').focus();
+            return;
+        }
+
         SetBtnDisabled("card_btn", 1, "确认中...");
         CallCpp("verify_card", value);
         SetBtnDisabled("card_btn", 0, "确定");
@@ -605,6 +616,9 @@ function VerifyOk() {
 
 // 更新
 function UpdateVer(obj) {
+    ShowMsg("目前已暂停自动更新, 敬请谅解.", "已暂停更新", 5);
+    return;
+
     if ($('#update_btn').hasClass('update_btn_ing'))
         return;
         

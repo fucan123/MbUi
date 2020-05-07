@@ -57,6 +57,18 @@
     <ClInclude Include="Asm.h">
       <Filter>Asm</Filter>
     </ClInclude>
+    <ClInclude Include="Game\GetProcAddressR.h">
+      <Filter>Game</Filter>
+    </ClInclude>
+    <ClInclude Include="Game\LoadLibraryR.h">
+      <Filter>Game</Filter>
+    </ClInclude>
+    <ClInclude Include="Game\ReflectiveDLLInjection.h">
+      <Filter>Game</Filter>
+    </ClInclude>
+    <ClInclude Include="Game\Driver.h">
+      <Filter>Game</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="MbUi.cpp">
@@ -75,6 +87,15 @@
       <Filter>Game</Filter>
     </ClCompile>
     <ClCompile Include="Game\HttpClient.cpp">
+      <Filter>Game</Filter>
+    </ClCompile>
+    <ClCompile Include="Game\LoadLibraryR.cpp">
+      <Filter>Game</Filter>
+    </ClCompile>
+    <ClCompile Include="Game\GetProcAddressR.cpp">
+      <Filter>Game</Filter>
+    </ClCompile>
+    <ClCompile Include="Game\Driver.cpp">
       <Filter>Game</Filter>
     </ClCompile>
   </ItemGroup>
@@ -96,13 +117,15 @@
     <None Include="..\html\static\main.js">
       <Filter>html</Filter>
     </None>
-    <None Include="Asm.asm">
-      <Filter>Asm</Filter>
-    </None>
   </ItemGroup>
   <ItemGroup>
     <Image Include="res\MbUi.ico">
       <Filter>资源文件</Filter>
     </Image>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="Asm.asm">
+      <Filter>源文件</Filter>
+    </CustomBuild>
   </ItemGroup>
 </Project>

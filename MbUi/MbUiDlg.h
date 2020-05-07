@@ -79,6 +79,7 @@ struct my_msg {
 	p->value[0] = _value; \
 }
 
+class Driver;
 // CMbUiDlg 对话框
 class CMbUiDlg : public CDialogEx
 {
@@ -101,6 +102,7 @@ protected:
 
 	// 生成的消息映射函数
 	virtual BOOL OnInitDialog();
+	void    LoadGameModule(CString& name, bool is_debug);
 	afx_msg void OnSysCommand(UINT nID, LPARAM lParam);
 	afx_msg void OnPaint();
 	// 调用JS
@@ -162,6 +164,7 @@ public:
 	char m_ConfPath[255];
 	HMODULE m_hGameModule;
 	ExportDllFunc m_DllFunc;
+	Driver* m_pDriver;
 
 	wkeWebView  m_web;
 	jsExecState m_es;

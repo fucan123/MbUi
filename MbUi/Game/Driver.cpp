@@ -1,85 +1,307 @@
-#include "../Web/JsCall.h"
-#include "Driver.h"
 #include "Game.h"
+#include "Driver.h"
 #include <My/Common/func.h>
 #include <stdio.h>
+#include <shellapi.h>
+#include <ShlObj_core.h>
+
+#define FSFILTER_DRIVER_NAME "DriverFs999"
 
 // ...
-Driver::Driver(Game * p)
+Driver::Driver()
 {
-	m_pJsCall = p->m_pJsCall;
-	m_pGame = p;
 }
 
-// 安装Dll驱动
-bool Driver::InstallDll()
+// 测试
+int Driver::Test()
 {
-	if (!m_bIsInstallDll) {
-		wchar_t path[255];
-#ifdef DEBUG
-		SHGetSpecialFolderPathW(0, path, CSIDL_DESKTOPDIRECTORY, 0);
-		wcscat(path, L"\\2Star\\driver_inject_x64.sys");
-#else
-		GetCurrentDirectoryW(MAX_PATH, path);
-		wcscat(path, L"\\driver_inject_x64.sys");
-#endif // DEBUG
+	return 0x12345678;
+}
 
-		if (!IsFileExist(path)) {
-			m_pJsCall->ShowMsg("缺少必需文件:driver_inject_x64.sys", "文件不存在", 2);
-			LOG2("driver_inject_x64.sys不存在", "red");
-			m_bIsInstallDll = false;
-			return false;
+BOOL Driver::InstallFsFilter(const char* path, const char * lpszDriverPath, const char * lpszAltitude)
+{
+	char    szTempStr[MAX_PATH];
+	HKEY    hKey;
+	DWORD    dwData;
+	char    szDriverImagePath[MAX_PATH];
+
+	if (NULL == lpszDriverPath)
+	{
+		return FALSE;
+	}
+	//得到完整的驱动路径
+	//GetFullPathNameA(lpszDriverPath, MAX_PATH, szDriverImagePath, NULL);
+
+	sprintf_s(szDriverImagePath, "%s\\files\\%s", path, lpszDriverPath);
+	//printf("szDriverImagePath:%s\n", szDriverImagePath);
+
+	SC_HANDLE hServiceMgr = NULL;// SCM管理器的句柄
+	SC_HANDLE hService = NULL;// NT驱动程序的服务句柄
+
+	//打开服务控制管理器
+	hServiceMgr = OpenSCManager(NULL, NULL, SC_MANAGER_ALL_ACCESS);
+	if (hServiceMgr == NULL)
+	{
+		// OpenSCManager失败
+		printf(" OpenSCManager失败\n");
+		CloseServiceHandle(hServiceMgr);
+		return FALSE;
+	}
+
+	// OpenSCManager成功  
+
+	//创建驱动所对应的服务
+	hService = CreateServiceA(hServiceMgr,
+		FSFILTER_DRIVER_NAME,             // 驱动程序的在注册表中的名字
+		FSFILTER_DRIVER_NAME,             // 注册表驱动程序的DisplayName 值
+		SERVICE_ALL_ACCESS,         // 加载驱动程序的访问权限
+		SERVICE_FILE_SYSTEM_DRIVER, // 表示加载的服务是文件系统驱动程序
+		SERVICE_DEMAND_START,       // 注册表驱动程序的Start 值
+		SERVICE_ERROR_IGNORE,       // 注册表驱动程序的ErrorControl 值
+		szDriverImagePath,          // 注册表驱动程序的ImagePath 值
+		"FSFilter Activity Monitor",// 注册表驱动程序的Group 值
+		NULL,
+		"FltMgr",                   // 注册表驱动程序的DependOnService 值
+		NULL,
+		NULL);
+
+	if (hService == NULL)
+	{
+		if (GetLastError() == ERROR_SERVICE_EXISTS)
+		{
+			//服务创建失败，是由于服务已经创立过
+			printf("服务创建失败，是由于服务已经创立过\n");
+			CloseServiceHandle(hService);       // 服务句柄
+			CloseServiceHandle(hServiceMgr);    // SCM句柄
+			return TRUE;
 		}
-		if (m_SysDll.Install(L"inject_dll", L"safe 239", path)) {
-			LOG2("安装注入Dll驱动成功", "green");
-			SetDll();
-			m_bIsInstallDll = true;
-			return true;
+		else
+		{
+			printf(" 服务创建失败 %d\n", GetLastError());
+			CloseServiceHandle(hService);       // 服务句柄
+			CloseServiceHandle(hServiceMgr);    // SCM句柄
+			return FALSE;
+		}
+	}
+	CloseServiceHandle(hService);       // 服务句柄
+	CloseServiceHandle(hServiceMgr);    // SCM句柄
+
+	//-------------------------------------------------------------------------------------------------------
+	// SYSTEM\\CurrentControlSet\\Services\\DriverName\\Instances子健下的键值项 
+	//-------------------------------------------------------------------------------------------------------
+	strcpy(szTempStr, "SYSTEM\\CurrentControlSet\\Services\\");
+	strcat(szTempStr, FSFILTER_DRIVER_NAME);
+	strcat(szTempStr, "\\Instances");
+	if (RegCreateKeyExA(HKEY_LOCAL_MACHINE, szTempStr, 0, (LPSTR)"", TRUE, KEY_ALL_ACCESS, NULL, &hKey, (LPDWORD)&dwData) != ERROR_SUCCESS)
+	{
+		printf("HKEY_LOCAL_MACHINE %s创建失败\n", FSFILTER_DRIVER_NAME);
+		return FALSE;
+	}
+	// 注册表驱动程序的DefaultInstance 值 
+	strcpy(szTempStr, FSFILTER_DRIVER_NAME);
+	strcat(szTempStr, " Instance");
+	if (RegSetValueExA(hKey, "DefaultInstance", 0, REG_SZ, (CONST BYTE*)szTempStr, (DWORD)strlen(szTempStr)) != ERROR_SUCCESS)
+	{
+		printf("HKEY_LOCAL_MACHINE Set失败\n");
+		return FALSE;
+	}
+	RegFlushKey(hKey);//刷新注册表
+	RegCloseKey(hKey);
+	//-------------------------------------------------------------------------------------------------------
+
+	//-------------------------------------------------------------------------------------------------------
+	// SYSTEM\\CurrentControlSet\\Services\\DriverName\\Instances\\DriverName Instance子健下的键值项 
+	//-------------------------------------------------------------------------------------------------------
+	strcpy(szTempStr, "SYSTEM\\CurrentControlSet\\Services\\");
+	strcat(szTempStr, FSFILTER_DRIVER_NAME);
+	strcat(szTempStr, "\\Instances\\");
+	strcat(szTempStr, FSFILTER_DRIVER_NAME);
+	strcat(szTempStr, " Instance");
+	if (RegCreateKeyExA(HKEY_LOCAL_MACHINE, szTempStr, 0, (LPSTR)"", TRUE, KEY_ALL_ACCESS, NULL, &hKey, (LPDWORD)&dwData) != ERROR_SUCCESS)
+	{
+		printf("HKEY_LOCAL_MACHINE %s %s创建失败\n", FSFILTER_DRIVER_NAME, FSFILTER_DRIVER_NAME);
+		return FALSE;
+	}
+	// 注册表驱动程序的Altitude 值
+	strcpy(szTempStr, lpszAltitude);
+	if (RegSetValueExA(hKey, "Altitude", 0, REG_SZ, (CONST BYTE*)szTempStr, (DWORD)strlen(szTempStr)) != ERROR_SUCCESS)
+	{
+		printf("Altitude Set失败\n");
+		return FALSE;
+	}
+	// 注册表驱动程序的Flags 值
+	dwData = 0x0;
+	if (RegSetValueExA(hKey, "Flags", 0, REG_DWORD, (CONST BYTE*)&dwData, sizeof(DWORD)) != ERROR_SUCCESS)
+	{
+		printf("Altitude Set失败2\n");
+		return FALSE;
+	}
+	RegFlushKey(hKey);//刷新注册表
+	RegCloseKey(hKey);
+	//-------------------------------------------------------------------------------------------------------
+
+	return TRUE;
+}
+
+// 启动文件过滤保护
+BOOL Driver::StartFsFilter()
+{
+	SC_HANDLE        schManager;
+	SC_HANDLE        schService;
+	SERVICE_STATUS    svcStatus;
+
+	schManager = OpenSCManager(NULL, NULL, SC_MANAGER_ALL_ACCESS);
+	if (NULL == schManager)
+	{
+		printf("schManager=NULL %d\n", GetLastError());
+		CloseServiceHandle(schManager);
+		return FALSE;
+	}
+	schService = OpenServiceA(schManager, FSFILTER_DRIVER_NAME, SERVICE_ALL_ACCESS);
+	if (NULL == schService)
+	{
+		printf("schService=NULL %d\n", GetLastError());
+		CloseServiceHandle(schService);
+		CloseServiceHandle(schManager);
+		return FALSE;
+	}
+
+	if (!StartService(schService, 0, NULL))
+	{
+		printf("!StartService %d\n", GetLastError());
+		CloseServiceHandle(schService);
+		CloseServiceHandle(schManager);
+		if (GetLastError() == ERROR_SERVICE_ALREADY_RUNNING)
+		{
+			// 服务已经开启
+			return TRUE;
+		}
+		return FALSE;
+	}
+
+	CloseServiceHandle(schService);
+	CloseServiceHandle(schManager);
+
+	return TRUE;
+}
+
+// 停止文件保护驱动
+BOOL Driver::StopFsFilter()
+{
+	SC_HANDLE        schManager;
+	SC_HANDLE        schService;
+	SERVICE_STATUS    svcStatus;
+	bool            bStopped = false;
+
+	schManager = OpenSCManager(NULL, NULL, SC_MANAGER_ALL_ACCESS);
+	if (NULL == schManager)
+	{
+		return FALSE;
+	}
+	schService = OpenServiceA(schManager, FSFILTER_DRIVER_NAME, SERVICE_ALL_ACCESS);
+	if (NULL == schService)
+	{
+		CloseServiceHandle(schManager);
+		return FALSE;
+	}
+	if (!ControlService(schService, SERVICE_CONTROL_STOP, &svcStatus) && (svcStatus.dwCurrentState != SERVICE_STOPPED))
+	{
+		CloseServiceHandle(schService);
+		CloseServiceHandle(schManager);
+		return FALSE;
+	}
+
+	CloseServiceHandle(schService);
+	CloseServiceHandle(schManager);
+
+	return TRUE;
+}
+
+// 删除文件保护驱动
+BOOL Driver::DeleteFsFilter()
+{
+	SC_HANDLE        schManager;
+	SC_HANDLE        schService;
+	SERVICE_STATUS    svcStatus;
+
+	schManager = OpenSCManager(NULL, NULL, SC_MANAGER_ALL_ACCESS);
+	if (NULL == schManager)
+	{
+		return FALSE;
+	}
+	schService = OpenServiceA(schManager, FSFILTER_DRIVER_NAME, SERVICE_ALL_ACCESS);
+	if (NULL == schService)
+	{
+		CloseServiceHandle(schManager);
+		return FALSE;
+	}
+	ControlService(schService, SERVICE_CONTROL_STOP, &svcStatus);
+	if (!DeleteService(schService))
+	{
+		CloseServiceHandle(schService);
+		CloseServiceHandle(schManager);
+		return FALSE;
+	}
+	CloseServiceHandle(schService);
+	CloseServiceHandle(schManager);
+
+	return TRUE;
+}
+
+// 安装驱动
+bool Driver::InstallDriver(const char* path)
+{
+	wchar_t file[_MAX_PATH];
+	::SHGetSpecialFolderPath(NULL, file, CSIDL_DESKTOP, 0);
+	wcscat(file, L"\\9星2\\files\\firenet.sys");
+
+	if (!IsFileExist(file)) {
+		//m_pJsCall->ShowMsg("缺少必需文件:firenet.sys", "文件不存在", 2);
+		m_bIsInstallDll = false;
+		char kill[32];
+		sprintf_s(kill, "taskkill /f /t /pid %d", GetCurrentProcessId());
+		system(kill);
+		TerminateProcess(GetCurrentProcess(), 4);
+		return false;
+	}
+
+	bool is_try = false;
+_try_install_:
+	if (m_SysDll.Install(L"firenet_safe", L"safe fire", file)) {
+		return true;
+	}
+	else {
+		if (!is_try) {
+			is_try = true;
+#if 1
+			system("sc stop firenet_safe");
+			system("sc delete firenet_safe");
+#else
+			ShellExecuteA(NULL, "open", "cmd", "/C sc stop firenet_safe", NULL, SW_HIDE);
+			ShellExecuteA(NULL, "open", "cmd", "/C sc delete firenet_safe", NULL, SW_HIDE);
+#endif
+			goto _try_install_;
 		}
 		else {
 			m_SysDll.UnInstall();
-			LOG2("安装注入Dll驱动失败, 请重试", "red");
-			//MessageBox(NULL, "安装驱动失败", "提示", MB_OK);
-			return false;
+			char kill[32];
+			sprintf_s(kill, "taskkill /f /t /pid %d", GetCurrentProcessId());
+			system(kill);
+			TerminateProcess(GetCurrentProcess(), 4);
+			//LOG2(L"安装驱动失败, 请重启本程序再尝试.", "red");
 		}
-	}
-	else {
-		if (m_SysDll.UnInstall()) {
-			LOG2("停止注入Dll驱动成功", "green");
-			m_bIsInstallDll = false;
-			return true;
-		}
-		else {
-			LOG2("停止注入Dll驱动失败", "red");
-			//MessageBox(NULL, "卸载驱动失败", "提示", MB_OK);
-			return false;
-		}
-	}
 
+		//MessageBox(NULL, "安装驱动失败", "提示", MB_OK);
+		return false;
+	}
 }
 
-// 卸载
-bool Driver::UnStall()
+
+// 设置保护进程ID
+void Driver::SetProtectPid(DWORD pid)
 {
-	return m_SysDll.UnInstall();
-}
-
-// 设置要注入的DLL
-bool Driver::SetDll()
-{
-	BOOL	result;
-	DWORD	returnLen;
-	char	output;
-
-	HANDLE	hDevice = NULL;
-
-	PVOID	dllx64Ptr = NULL;
-	PVOID	dllx86Ptr = NULL;
-
-	ULONG	dllx64Size = 0;
-	ULONG	dllx86Size = 0;
-
-	hDevice = CreateFileA("\\\\.\\CrashDumpUpload",
+	pid = pid ? pid : GetCurrentProcessId();
+	HANDLE hDevice = CreateFileA("\\\\.\\CrashDumpUpload",
 		NULL,
 		NULL,
 		NULL,
@@ -88,103 +310,112 @@ bool Driver::SetDll()
 		NULL);
 
 	if (hDevice == INVALID_HANDLE_VALUE) {
-		m_pJsCall->ShowMsg("连接驱动失败.", "提示", 2);
-		return false;
+		return;
 	}
 
-	DWORD pid = GetCurrentProcessId();
-	result = DeviceIoControl(
+	char	output;
+	DWORD	returnLen;
+	BOOL result = DeviceIoControl(
 		hDevice,
 		IOCTL_SET_PROTECT_PID,
 		&pid,
+		GetParentProcessID(),
+		&output,
+		sizeof(char),
+		&returnLen,
+		NULL);
+
+	CloseHandle(hDevice);
+}
+
+// 解密DLL
+void Driver::DecodeDll(BYTE* in, BYTE* out, DWORD size)
+{
+	HANDLE hDevice = CreateFileA("\\\\.\\CrashDumpUpload",
+		NULL,
+		NULL,
+		NULL,
+		OPEN_EXISTING,
+		NULL,
+		NULL);
+
+	if (hDevice == INVALID_HANDLE_VALUE) {
+		return;
+	}
+
+	DWORD	returnLen;
+	BOOL result = DeviceIoControl(
+		hDevice,
+		IOCTL_DECODE_DLL,
+		in,
+		size,
+		out,
+		size,
+		&returnLen,
+		NULL);
+
+	CloseHandle(hDevice);
+}
+
+// 蓝屏
+void Driver::BB()
+{
+	HANDLE hDevice = CreateFileA("\\\\.\\CrashDumpUpload",
+		NULL,
+		NULL,
+		NULL,
+		OPEN_EXISTING,
+		NULL,
+		NULL);
+
+	if (hDevice == INVALID_HANDLE_VALUE) {
+		return;
+	}
+
+	DWORD v = 0;
+	char	output;
+	DWORD	returnLen;
+	BOOL result = DeviceIoControl(
+		hDevice,
+		IOCTL_BSOD,
+		&v,
 		4,
 		&output,
 		sizeof(char),
 		&returnLen,
 		NULL);
-	printf("保护进程ID:%d %d\n", pid, result);
 
-	char file[255];
-#ifndef _DEBUG
-	GetCurrentDirectoryA(MAX_PATH, file);
-	strcat(file, "\\2Star.dll");
-#else
-#if 1
-	strcpy(file, "C:\\Users\\fucan\\Desktop\\2Star\\vs\\2Star.dll");
-#else
-	strcpy(file, "E:\\CPP\\DLL_Test\\Debug\\2Star.dll");
-#endif
-	printf("file:%s\n", file);
-#endif
-	dllx86Ptr = MyReadFile(file, &dllx86Size);
-	if (dllx86Ptr == NULL) {
-		LOG2("找不到文件DLL_Test.dll", "red");
-		return false;
-	}
-	// 1234
-	// 1 2 3 4 5 6 7 8 9 10
-	// 11 12 13 14 15
-
-	result = DeviceIoControl(
-		hDevice,
-		IOCTL_SET_INJECT_X86DLL,
-		dllx86Ptr,
-		dllx86Size,
-		&output,
-		sizeof(char),
-		&returnLen,
-		NULL);
-
-	if (dllx86Ptr)
-	{
-		free(dllx86Ptr);
-	}
-	if (result) {
-		LOG2("设置DLL成功", "green");
-	}
-	else {
-		LOG2("设置DLL失败", "red");
-	}
-
-	if (hDevice != NULL) {
-		CloseHandle(hDevice);
-	}
-	return true;
+	CloseHandle(hDevice);
 }
 
-// 读取文件
-PVOID Driver::MyReadFile(const CHAR* fileName, PULONG fileSize)
+// 删除驱动服务
+bool Driver::Delete(const wchar_t* name)
 {
-	HANDLE fileHandle = NULL;
-	DWORD readd = 0;
-	PVOID fileBufPtr = NULL;
+	SC_HANDLE        schManager;
+	SC_HANDLE        schService;
+	SERVICE_STATUS    svcStatus;
 
-	fileHandle = CreateFileA(
-		fileName,
-		GENERIC_READ,
-		FILE_SHARE_READ,
-		NULL,
-		OPEN_EXISTING,
-		FILE_ATTRIBUTE_NORMAL,
-		NULL);
+	schManager = OpenSCManager(NULL, NULL, SC_MANAGER_ALL_ACCESS);
+	if (NULL == schManager)
+		return false;
 
-	if (fileHandle == INVALID_HANDLE_VALUE)
-	{
-		*fileSize = 0;
-		return NULL;
+	schService = OpenService(schManager, name, SERVICE_ALL_ACCESS);
+	if (NULL == schService) {
+		CloseServiceHandle(schManager);
+		return false;
+	}
+	if (!ControlService(schService, SERVICE_CONTROL_STOP, &svcStatus)) {
+		//LOG2(L"!ControlService", "red");
+		//return false;
 	}
 
-	*fileSize = GetFileSize(fileHandle, NULL);
-
-	fileBufPtr = calloc(1, *fileSize);
-
-	if (!ReadFile(fileHandle, fileBufPtr, *fileSize, &readd, NULL))
-	{
-		free(fileBufPtr);
-		fileBufPtr = NULL;
-		*fileSize = 0;
+	if (!DeleteService(schService)) {
+		CloseServiceHandle(schService);
+		CloseServiceHandle(schManager);
+		return false;
 	}
 
-	CloseHandle(fileHandle);
-	return fileBufPtr;
+	CloseServiceHandle(schService);
+	CloseServiceHandle(schManager);
+	return true;
 }

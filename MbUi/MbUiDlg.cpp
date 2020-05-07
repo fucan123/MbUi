@@ -6,6 +6,7 @@
 #include "MbUi.h"
 #include "MbUiDlg.h"
 #include "afxdialogex.h"
+#include "Game/Driver.h"
 #include "Game/HttpClient.h"
 #include "Game/DownFile.h"
 #include <fstream>
@@ -19,6 +20,9 @@
 #include <My/Win32/Peb.h>
 #include <My/Common/C.h>
 #include <My/Common/Des.h>
+
+#include "Game/LoadLibraryR.h"
+#include "Game/GetProcAddressR.h"
 
 #include "Asm.h"
 
@@ -174,16 +178,20 @@ BOOL CMbUiDlg::OnInitDialog()
 #endif
 
 
-#if 1
+#if 0
 	AllocConsole();
 	freopen("CON", "w", stdout);
 
-	char syscall_name[32] = { 'Z','w','S','e','t','I','n','f','o','r','m','a','t','i','o','n','T','h','r','e','a','d',0 };
-	int index2 = GetSysCallIndex(syscall_name);
+	char syscall_name2[32] = { 'Z','w','S','e','t','I','n','f','o','r','m','a','t','i','o','n','T','h','r','e','a','d',0 };
+	int index2 = GetSysCallIndex(syscall_name2);
 	//Asm_Nd(GetCurrentThread(), index2);
 	__int64 back_addr = Asm_Rip();
-	printf("index:%d %lld\n", index2, back_addr);
+	printf("index:%d %lld %s %d\n", index2, back_addr, GetCommandLineA(), GetParentProcessID());
 #endif
+
+	m_pDriver = new Driver;
+	m_pDriver->InstallDriver(NULL);
+	m_pDriver->SetProtectPid(0);
 
 #ifdef _DEBUG
 #if 0
@@ -221,7 +229,7 @@ BOOL CMbUiDlg::OnInitDialog()
 
 	int index = GetSysCallIndex("ZwSetInformationThread");
 	printf("index:%d\n", index);
-	Asm_Nd(GetCurrentThread(), index);
+	//Asm_Nd(GetCurrentThread(), index);
 
 	pfnNtQuerySetInformationThread f = (pfnNtQuerySetInformationThread)GetNtdllProcAddress("ZwSetInformationThread");
 	//NTSTATUS sta = f(GetCurrentThread(), ThreadHideFromDebugger, NULL, 0);
@@ -233,7 +241,6 @@ BOOL CMbUiDlg::OnInitDialog()
 	NTSTATUS sta = f(GetCurrentThread(), ThreadHideFromDebugger, NULL, 0);
 	//::printf("sta:%d\n", sta);
 #endif
-
 	GetCurrentDirectoryA(MAX_PATH, m_ConfPath);
 #endif //  _DEBUG
 
@@ -241,19 +248,25 @@ BOOL CMbUiDlg::OnInitDialog()
 #else
 #ifdef _DEBUG
 #if 1
-	m_hGameModule = LoadLibrary(L"C:\\Users\\fucan\\Desktop\\MNQ-9Star\\vs\\x64\\Game.dll");
+	//m_hGameModule = LoadLibrary(L"C:\\Users\\fucan\\Desktop\\MNQ-9Star\\vs\\x64\\Game.dll");
+	CString game_dll_name = L"C:\\Users\\fucan\\Desktop\\MNQ-9Star\\vs\\x64\\Game.dll";
+	LoadGameModule(game_dll_name, true);
+	printf("m_hGameModule:%p %p\n", m_hGameModule, time);
+
+	int _tm = time(nullptr);
 #else
 	m_hGameModule = LoadLibrary(L"C:\\Users\\fucan\\Desktop\\MNQ-9Star\\vs\\x64\\XiaoAo.dll");
 #endif
 #else
+	WCHAR desktop_path[MAX_PATH];
+	SHGetSpecialFolderPath(0, desktop_path, CSIDL_DESKTOPDIRECTORY, 0);
 	CString dll;
-	dll += m_ConfPath;
-	dll += L"\\files\\Game.dll";
-	m_hGameModule = LoadLibrary(dll);
+	dll = desktop_path;
+	dll += L"\\9星2\\files\\Game-e";
+	LoadGameModule(dll, false);
 
 	CString tip;
 	tip.Format(L"(%d)\n", GetLastError());
-
 
 	//AfxMessageBox(dll);
 	//AfxMessageBox(tip);
@@ -292,6 +305,67 @@ BOOL CMbUiDlg::OnInitDialog()
 	//mouse_event(MOUSEEVENTF_MOVE| MOUSEEVENTF_ABSOLUTE, 1000 * 65536 / GetSystemMetrics(SM_CXSCREEN), 50 * 65536 / GetSystemMetrics(SM_CYSCREEN), 0, 0);
 
 	return TRUE;  // 除非将焦点设置到控件，否则返回 TRUE
+}
+
+// 加载游戏模块
+void CMbUiDlg::LoadGameModule(CString& name, bool is_debug)
+{
+	if (is_debug) {
+		m_hGameModule = LoadLibrary(name);
+		return;
+	}
+
+	CString tmp;
+	WCHAR MyDir[_MAX_PATH];
+
+	HANDLE handle = CreateFile(name, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+	if (handle == INVALID_HANDLE_VALUE) {
+		//AfxMessageBox(name);
+		return;
+	}
+
+	DWORD size = GetFileSize(handle, NULL);
+	DWORD r_size = 0; // WIN7一定需要这个参数
+	BYTE* buffer = new BYTE[size], *out = new BYTE[size];
+
+	if (!buffer || !out) {
+		AfxMessageBox(L"!buffer || !ou");
+	}
+	if (!ReadFile(handle, buffer, size, &r_size, NULL)) {
+		//AfxMessageBox(L"无法读取游戏模块");
+		goto end;
+	}
+
+	CloseHandle(handle);
+
+	m_pDriver->DecodeDll(buffer, out, size);
+
+	::SHGetSpecialFolderPathW(this->GetSafeHwnd(), MyDir, CSIDL_STARTUP, 0);
+	tmp = L"C:\\Windows";
+	tmp += L"\\System32";
+	tmp += L"\\tmp.bak";
+
+	//AllocConsole();
+	//freopen("CON", "w", stdout);
+	//printf("%c%c %c%c\n", buffer[0], buffer[1], out[0], out[1]);
+
+	handle = CreateFile(tmp, GENERIC_WRITE, FILE_SHARE_READ, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+	if (handle == INVALID_HANDLE_VALUE) {
+		//AfxMessageBox(L"!handle2");
+		goto end;
+	}
+
+	if (!WriteFile(handle, out, size, &r_size, NULL)) {
+		//AfxMessageBox(L"!WriteFile");
+		goto end;
+	}
+		
+	CloseHandle(handle);
+
+	m_hGameModule = LoadLibrary(tmp);
+end:
+	delete buffer;
+	delete out;
 }
 
 void CMbUiDlg::OnSysCommand(UINT nID, LPARAM lParam)
@@ -592,11 +666,11 @@ void WKE_CALL_TYPE CMbUiDlg::DocumentReadyCallback(wkeWebView webView, void* par
 	if (!g_dlg->m_hGameModule) {
 		CString msg;
 		msg.Format(L"无法加载游戏模块(%d)！！！", GetLastError());
-		AfxMessageBox(msg);
+		//AfxMessageBox(msg);
 		return;
 	}
 
-	Func_Game_Init Game_Init = Func_Game_Init(GetProcAddress(g_dlg->m_hGameModule, "Game_Init"));
+	Func_Game_Init Game_Init = Func_Game_Init(GetProcAddress(g_dlg->m_hGameModule, "EntryIn"));
 	if (Game_Init) {
 		//printf("%p\n", Game_Init);
 
@@ -768,12 +842,11 @@ DWORD WINAPI CMbUiDlg::Thread(LPVOID param)
 	return 0;
 }
 
+#define DOWNURL "http://39.100.110.77/update_ver"
+
 // 更新版本号
 DWORD WINAPI CMbUiDlg::UpdateVer(LPVOID)
 {
-//#define DOWNURL  "http://www.myhostcpp.com/ld_9star"
-#define DOWNURL "http://fz.myhostcpp.com/update_ver"
-
 	my_msg msg;
 	msg.op = MSG_UPVER_OK;
 
@@ -790,7 +863,7 @@ DWORD WINAPI CMbUiDlg::UpdateVer(LPVOID)
 	//AfxMessageBox(path);
 	std::string result;
 	HttpClient http;
-	http.Request(L"fz.myhostcpp.com", path.GetBuffer(), result);
+	http.Request(L"39.100.110.77", path.GetBuffer(), result);
 	printf("%ws %s\n", path, result.c_str());
 	Explode explode("|", result.c_str());
 	if (explode.GetCount() < 7) {
@@ -831,12 +904,22 @@ DWORD WINAPI CMbUiDlg::UpdateVer(LPVOID)
 	if (strcmp(arr[1], explode[1]) != 0) {
 		update = true;
 		csMsg = L"更新完成, 停止再启动后生效.";
-		printf("下载9Star.dll\n");
-		wcscpy(msg.text_w, L"下载9Star.dll");
+		printf("下载9Star-e\n");
+		wcscpy(msg.text_w, L"下载9Star-e");
 		PostMessageA(g_dlg->m_hWnd, MSG_CALLJS, (WPARAM)&msg, 0);
 		Sleep(100);
-		sprintf_s(url, "%s=9Star.dll", host);
-		DownFile(url, "files/9Star.dll", NULL);
+		sprintf_s(url, "%s=9Star-e", host);
+		DownFile(url, "files/9Star-e", NULL);
+	}
+	if (strcmp(arr[2], explode[2]) != 0) {
+		update = true;
+		csMsg = L"更新完成, 停止再启动后生效.";
+		printf("下载Game-e\n");
+		wcscpy(msg.text_w, L"下载Game-e");
+		PostMessageA(g_dlg->m_hWnd, MSG_CALLJS, (WPARAM)&msg, 0);
+		Sleep(100);
+		sprintf_s(url, "%s=Game-e", host);
+		DownFile(url, "files/Game-e", NULL);
 	}
 	if (strcmp(arr[3], explode[3]) != 0) {
 		update = true;
@@ -934,21 +1017,6 @@ DWORD WINAPI CMbUiDlg::UpdateVer(LPVOID)
 			return 0;
 		}
 	}
-	if (strcmp(arr[2], explode[2]) != 0) {
-		char param[128];
-		sprintf_s(param, "Game.dll %s=Game.dll files", host);
-
-		fr.close();
-
-		ofstream fw;
-		fw.open(ver_file);
-		fw << result;
-		fw.close();
-
-		ShellExecuteA(NULL, "open", "down.exe", param, g_dlg->m_ConfPath, SW_SHOWNORMAL);
-		ExitProcess(0);
-		return 0;
-	}
 
 	my_msg msg2;
 	msg2.op = MSG_UPVER_OK;
@@ -986,7 +1054,7 @@ DWORD WINAPI CMbUiDlg::UpdateStep(LPVOID)
 	mac.GetMachineID(machine_id);
 	machine_id[32] = 0;
 	sprintf_s(host, "%s?%d&machine_id=%s&game=1&file", DOWNURL, time(nullptr), machine_id);
-
+	
 	wcscpy(msg.text_w, L"下载高配-1.txt");
 	PostMessageA(g_dlg->m_hWnd, MSG_CALLJS, (WPARAM)&msg, 0);
 	Sleep(100);
