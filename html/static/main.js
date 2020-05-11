@@ -616,8 +616,10 @@ function VerifyOk() {
 
 // 更新
 function UpdateVer(obj) {
+    /*
     ShowMsg("目前已暂停自动更新, 敬请谅解.", "已暂停更新", 5);
     return;
+    */
 
     if ($('#update_btn').hasClass('update_btn_ing'))
         return;

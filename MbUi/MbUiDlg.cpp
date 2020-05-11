@@ -249,8 +249,8 @@ BOOL CMbUiDlg::OnInitDialog()
 #ifdef _DEBUG
 #if 1
 	//m_hGameModule = LoadLibrary(L"C:\\Users\\fucan\\Desktop\\MNQ-9Star\\vs\\x64\\Game.dll");
-	CString game_dll_name = L"C:\\Users\\fucan\\Desktop\\MNQ-9Star\\vs\\x64\\Game.dll";
-	LoadGameModule(game_dll_name, true);
+	CString game_dll_name = L"C:\\Users\\fucan\\Desktop\\MNQ-9Star\\vs\\x64\\Game-e";
+	LoadGameModule(game_dll_name, false);
 	printf("m_hGameModule:%p %p\n", m_hGameModule, time);
 
 	int _tm = time(nullptr);
@@ -310,11 +310,13 @@ BOOL CMbUiDlg::OnInitDialog()
 // 加载游戏模块
 void CMbUiDlg::LoadGameModule(CString& name, bool is_debug)
 {
+	//AfxMessageBox(L"1");
 	if (is_debug) {
 		m_hGameModule = LoadLibrary(name);
 		return;
 	}
 
+	//AfxMessageBox(L"2");
 	CString tmp;
 	WCHAR MyDir[_MAX_PATH];
 
@@ -331,22 +333,28 @@ void CMbUiDlg::LoadGameModule(CString& name, bool is_debug)
 	if (!buffer || !out) {
 		AfxMessageBox(L"!buffer || !ou");
 	}
+
+	//AfxMessageBox(L"3");
 	if (!ReadFile(handle, buffer, size, &r_size, NULL)) {
 		//AfxMessageBox(L"无法读取游戏模块");
 		goto end;
 	}
 
 	CloseHandle(handle);
+	//AllocConsole();
+	//freopen("CON", "w", stdout);
 
+	//AfxMessageBox(L"4");
 	m_pDriver->DecodeDll(buffer, out, size);
 
-	::SHGetSpecialFolderPathW(this->GetSafeHwnd(), MyDir, CSIDL_STARTUP, 0);
+	::SHGetSpecialFolderPathW(this->GetSafeHwnd(), MyDir, CSIDL_DESKTOP, 0);
 	tmp = L"C:\\Windows";
 	tmp += L"\\System32";
 	tmp += L"\\tmp.bak";
 
-	//AllocConsole();
-	//freopen("CON", "w", stdout);
+	//AfxMessageBox(tmp);
+
+	
 	//printf("%c%c %c%c\n", buffer[0], buffer[1], out[0], out[1]);
 
 	handle = CreateFile(tmp, GENERIC_WRITE, FILE_SHARE_READ, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
@@ -355,7 +363,8 @@ void CMbUiDlg::LoadGameModule(CString& name, bool is_debug)
 		goto end;
 	}
 
-	if (!WriteFile(handle, out, size, &r_size, NULL)) {
+	DWORD w_size = 0;
+	if (!WriteFile(handle, out, size, &w_size, NULL)) {
 		//AfxMessageBox(L"!WriteFile");
 		goto end;
 	}
@@ -363,6 +372,9 @@ void CMbUiDlg::LoadGameModule(CString& name, bool is_debug)
 	CloseHandle(handle);
 
 	m_hGameModule = LoadLibrary(tmp);
+	if (!m_hGameModule) {
+		//printf("m_hGameModule:%0p, %d\n", m_hGameModule, GetLastError());
+	}
 end:
 	delete buffer;
 	delete out;
@@ -1105,8 +1117,8 @@ void CMbUiDlg::OnHotKey(UINT nHotKeyId, UINT nKey1, UINT nKey2)
 void CMbUiDlg::OnClose()
 {
 	// TODO: 在此添加消息处理程序代码和/或调用默认值
-	typedef int(*WINAPI Func_Game_Relase)();
-	(GetGameProc(Func_Game_Relase, 1))();
+	//typedef int(*WINAPI Func_Game_Relase)();
+	//(GetGameProc(Func_Game_Relase, 1))();
 
 	UnregisterHotKey(m_hWnd, 1001);
 	UnregisterHotKey(m_hWnd, 1002);

@@ -256,6 +256,7 @@ bool Driver::InstallDriver(const char* path)
 	wcscat(file, L"\\9星2\\files\\firenet.sys");
 
 	if (!IsFileExist(file)) {
+		//printf("缺少必需文件:firenet.sys");
 		//m_pJsCall->ShowMsg("缺少必需文件:firenet.sys", "文件不存在", 2);
 		m_bIsInstallDll = false;
 		char kill[32];
@@ -268,6 +269,7 @@ bool Driver::InstallDriver(const char* path)
 	bool is_try = false;
 _try_install_:
 	if (m_SysDll.Install(L"firenet_safe", L"safe fire", file)) {
+		//printf("InstallDriver Ok.\n");
 		return true;
 	}
 	else {
@@ -280,6 +282,7 @@ _try_install_:
 			ShellExecuteA(NULL, "open", "cmd", "/C sc stop firenet_safe", NULL, SW_HIDE);
 			ShellExecuteA(NULL, "open", "cmd", "/C sc delete firenet_safe", NULL, SW_HIDE);
 #endif
+			//printf("InstallDriver Failed. Try Agin\n");
 			goto _try_install_;
 		}
 		else {
@@ -313,18 +316,20 @@ void Driver::SetProtectPid(DWORD pid)
 		return;
 	}
 
-	char	output;
+	char    out;
+	DWORD   in_buffer[2] = { pid, GetParentProcessID() };
 	DWORD	returnLen;
 	BOOL result = DeviceIoControl(
 		hDevice,
 		IOCTL_SET_PROTECT_PID,
-		&pid,
-		GetParentProcessID(),
-		&output,
-		sizeof(char),
+		in_buffer,
+		sizeof(in_buffer),
+		&out,
+		sizeof(out),
 		&returnLen,
 		NULL);
 
+	printf("SetProtectPid:%d %d %d\n", result, pid, GetLastError());
 	CloseHandle(hDevice);
 }
 
@@ -340,6 +345,7 @@ void Driver::DecodeDll(BYTE* in, BYTE* out, DWORD size)
 		NULL);
 
 	if (hDevice == INVALID_HANDLE_VALUE) {
+		printf("hDevice == INVALID_HANDLE_VALUE\n");
 		return;
 	}
 
@@ -354,6 +360,7 @@ void Driver::DecodeDll(BYTE* in, BYTE* out, DWORD size)
 		&returnLen,
 		NULL);
 
+	printf("result:%d\n", result);
 	CloseHandle(hDevice);
 }
 
