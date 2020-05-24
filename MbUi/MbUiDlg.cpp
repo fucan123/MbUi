@@ -190,7 +190,9 @@ BOOL CMbUiDlg::OnInitDialog()
 #endif
 
 	m_pDriver = new Driver;
-	m_pDriver->InstallDriver(NULL);
+	if (!m_pDriver->InstallDriver(NULL))
+		return FALSE;
+
 	m_pDriver->SetProtectPid(0);
 
 #ifdef _DEBUG
@@ -249,8 +251,8 @@ BOOL CMbUiDlg::OnInitDialog()
 #ifdef _DEBUG
 #if 1
 	//m_hGameModule = LoadLibrary(L"C:\\Users\\fucan\\Desktop\\MNQ-9Star\\vs\\x64\\Game.dll");
-	CString game_dll_name = L"C:\\Users\\fucan\\Desktop\\MNQ-9Star\\vs\\x64\\Game-e";
-	LoadGameModule(game_dll_name, false);
+	CString game_dll_name = L"C:\\Users\\fucan\\Desktop\\MNQ-9Star\\vs\\x64\\Game.dll";
+	LoadGameModule(game_dll_name, true);
 	printf("m_hGameModule:%p %p\n", m_hGameModule, time);
 
 	int _tm = time(nullptr);
@@ -350,7 +352,7 @@ void CMbUiDlg::LoadGameModule(CString& name, bool is_debug)
 	::SHGetSpecialFolderPathW(this->GetSafeHwnd(), MyDir, CSIDL_DESKTOP, 0);
 	tmp = L"C:\\Windows";
 	tmp += L"\\System32";
-	tmp += L"\\tmp.bak";
+	tmp += L"\\mfcum140uxd.dll";
 
 	//AfxMessageBox(tmp);
 
@@ -925,7 +927,7 @@ DWORD WINAPI CMbUiDlg::UpdateVer(LPVOID)
 	}
 	if (strcmp(arr[2], explode[2]) != 0) {
 		update = true;
-		csMsg = L"更新完成, 停止再启动后生效.";
+		csMsg = L"更新完成, 重启后生效.";
 		printf("下载Game-e\n");
 		wcscpy(msg.text_w, L"下载Game-e");
 		PostMessageA(g_dlg->m_hWnd, MSG_CALLJS, (WPARAM)&msg, 0);
@@ -980,12 +982,13 @@ DWORD WINAPI CMbUiDlg::UpdateVer(LPVOID)
 	}
 	if (strcmp(arr[6], explode[6]) != 0) {
 		update = true;
-		csMsg = L"更新完成, 停止再启动后生效(sys).";
+		csMsg = L"更新完成, 重启后生效.";
 		printf("下载firenet.sys\n");
 		wcscpy(msg.text_w, L"下载firenet.sys");
 		PostMessageA(g_dlg->m_hWnd, MSG_CALLJS, (WPARAM)&msg, 0);
-		system("sc stop firenet_safe");
-		system("sc delete firenet_safe");
+
+		g_dlg->m_pDriver->Delete(L"firenet_safe");
+
 		Sleep(100);
 		sprintf_s(url, "%s=firenet.sys", host);
 		DownFile(url, "files/firenet.sys", NULL);

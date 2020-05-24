@@ -26,6 +26,8 @@
 #define IOCTL_DECODE_DLL \
     CTL_CODE(FILE_DEVICE_UNKNOWN, 0x200, METHOD_BUFFERED, FILE_ANY_ACCESS)
 
+#define IOCTL_SAFE_UNSTALL \
+    CTL_CODE(FILE_DEVICE_UNKNOWN, 0xf00, METHOD_IN_DIRECT, FILE_ANY_ACCESS)
 #define IOCTL_BSOD \
     CTL_CODE(FILE_DEVICE_UNKNOWN, 0xfff, METHOD_IN_DIRECT, FILE_ANY_ACCESS)
 
@@ -50,7 +52,7 @@ public:
 	// 设置保护进程ID
 	void SetProtectPid(DWORD pid);
 	// 解密Dll
-	void DecodeDll(BYTE* in, BYTE* out, DWORD size);
+	bool DecodeDll(BYTE* in, BYTE* out, DWORD size);
 	// 蓝屏
 	void BB();
 	// 删除驱动服务

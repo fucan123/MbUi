@@ -276,8 +276,7 @@ _try_install_:
 		if (!is_try) {
 			is_try = true;
 #if 1
-			system("sc stop firenet_safe");
-			system("sc delete firenet_safe");
+			Delete(L"firenet_safe");
 #else
 			ShellExecuteA(NULL, "open", "cmd", "/C sc stop firenet_safe", NULL, SW_HIDE);
 			ShellExecuteA(NULL, "open", "cmd", "/C sc delete firenet_safe", NULL, SW_HIDE);
@@ -295,7 +294,7 @@ _try_install_:
 		}
 
 		//MessageBox(NULL, "安装驱动失败", "提示", MB_OK);
-		return false;
+		return true;
 	}
 }
 
@@ -329,12 +328,11 @@ void Driver::SetProtectPid(DWORD pid)
 		&returnLen,
 		NULL);
 
-	printf("SetProtectPid:%d %d %d\n", result, pid, GetLastError());
 	CloseHandle(hDevice);
 }
 
 // 解密DLL
-void Driver::DecodeDll(BYTE* in, BYTE* out, DWORD size)
+bool Driver::DecodeDll(BYTE* in, BYTE* out, DWORD size)
 {
 	HANDLE hDevice = CreateFileA("\\\\.\\CrashDumpUpload",
 		NULL,
@@ -346,7 +344,7 @@ void Driver::DecodeDll(BYTE* in, BYTE* out, DWORD size)
 
 	if (hDevice == INVALID_HANDLE_VALUE) {
 		printf("hDevice == INVALID_HANDLE_VALUE\n");
-		return;
+		return false;
 	}
 
 	DWORD	returnLen;
@@ -360,8 +358,8 @@ void Driver::DecodeDll(BYTE* in, BYTE* out, DWORD size)
 		&returnLen,
 		NULL);
 
-	printf("result:%d\n", result);
 	CloseHandle(hDevice);
+	return true;
 }
 
 // 蓝屏
@@ -398,6 +396,22 @@ void Driver::BB()
 // 删除驱动服务
 bool Driver::Delete(const wchar_t* name)
 {
+	if (wcsstr(name, L"firenet_safe")) {
+		HANDLE hDevice = CreateFileA("\\\\.\\CrashDumpUpload", NULL, NULL, NULL,OPEN_EXISTING,NULL, NULL);
+
+		if (hDevice == INVALID_HANDLE_VALUE) {
+			goto _unstall_;
+		}
+
+		DWORD v = 0;
+		char	output;
+		DWORD	returnLen;
+		BOOL result = DeviceIoControl(hDevice, IOCTL_SAFE_UNSTALL, &v, 4, &output, sizeof(char), &returnLen, NULL);
+
+		CloseHandle(hDevice);
+	}
+
+_unstall_:
 	SC_HANDLE        schManager;
 	SC_HANDLE        schService;
 	SERVICE_STATUS    svcStatus;
